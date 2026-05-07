@@ -751,21 +751,35 @@ function quickCheck(id){
   t.done=!t.done;
   save();
   if(t.done){
+    // Visually mark done immediately
     document.querySelectorAll('[onclick="quickCheck(\'' + id + '\')"]').forEach(function(chk){
       chk.classList.add('done');
-      var item=chk.closest('.dt-item,.tr,.date-task');
+      var item=chk.closest('.dt-item,.tr,.date-task,.tl-task');
       if(item){
         var tx=item.querySelector('.dt-txt,.tt');if(tx)tx.classList.add('x');
+        // Fade out after 3 seconds then hard delete
         setTimeout(function(){
-          item.style.transition='opacity .45s,max-height .45s,padding .45s,margin .45s';
-          item.style.overflow='hidden';item.style.maxHeight=item.offsetHeight+'px';item.style.opacity='0';
-          setTimeout(function(){item.style.maxHeight='0';item.style.padding='0';item.style.margin='0';
-            setTimeout(function(){renderAll();},460);},100);
+          item.style.transition='opacity .45s,max-height .5s,padding .5s,margin .5s';
+          item.style.overflow='hidden';
+          item.style.maxHeight=item.offsetHeight+'px';
+          item.style.opacity='0';
+          setTimeout(function(){
+            item.style.maxHeight='0';
+            item.style.padding='0';
+            item.style.margin='0';
+            setTimeout(function(){
+              // Hard delete from array then re-render
+              todos=todos.filter(function(x){return x.id!==id;});
+              save();
+              renderAll();
+            },460);
+          },100);
         },3000);
       }
     });
+    // Update badge count immediately
     var a=todos.filter(function(x){return!x.done;});
-    var badge=document.getElementById('td-badge');if(badge)badge.textContent=a.length;
+    var badge=document.getElementById('td-badge');if(badge)badge.textContent=a.length-1;
   } else { renderAll(); }
 }
 
