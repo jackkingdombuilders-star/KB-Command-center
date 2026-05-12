@@ -393,11 +393,13 @@ function load(){
     ensurePipelineList();
     if(Array.isArray(sbT)&&sbT.length){todos=sbT.map(function(t){return{id:t.id,text:t.text,listId:t.list_id,due:t.due||'',done:t.done,ord:t.ord||0};});}
     else{var tc=localStorage.getItem('kb5_todos');if(tc)todos=JSON.parse(tc);}
+    var bc=localStorage.getItem('kb5_board');if(bc)board=JSON.parse(bc);
     render();
   }).catch(function(){
-    var lc=localStorage.getItem('kb5_lists');var tc=localStorage.getItem('kb5_todos');
+    var lc=localStorage.getItem('kb5_lists');var tc=localStorage.getItem('kb5_todos');var bc=localStorage.getItem('kb5_board');
     if(lc)lists=JSON.parse(lc);
     if(tc)todos=JSON.parse(tc);
+    if(bc)board=JSON.parse(bc);
     render();
   });
 }
