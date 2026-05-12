@@ -628,6 +628,24 @@ select{appearance:none;cursor:pointer;}
   </div>
 </div>
 
+<!-- Create Calendar Event Modal -->
+<div class="ov" id="cal-event-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="mt">Create Calendar Event</div>
+    <div class="fl"><label>Event Title</label><input id="cev-title" placeholder="e.g. Site visit – Maggard"/></div>
+    <div class="fl"><label>Date</label><input id="cev-date" type="date"/></div>
+    <div class="tc">
+      <div class="fl"><label>Start Time</label><input id="cev-start" type="time" value="09:00"/></div>
+      <div class="fl"><label>End Time</label><input id="cev-end" type="time" value="10:00"/></div>
+    </div>
+    <div class="fl"><label>Notes (optional)</label><input id="cev-notes" placeholder="Description or location"/></div>
+    <div class="ma">
+      <button class="btn bg2 sm" onclick="closeModal('cal-event-modal')">Cancel</button>
+      <button class="btn bp sm" onclick="saveCalendarEvent()">Save to Google Calendar</button>
+    </div>
+  </div>
+</div>
+
 <!-- FAB + Voice Sheet -->
 <button class="fab" id="fab" onclick="openVoiceSheet()">🎙</button>
 <div class="vbd" id="vbd" onclick="closeVoiceSheet()"></div>
