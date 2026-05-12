@@ -255,6 +255,23 @@ select{appearance:none;cursor:pointer;}
 /* action item in board */
 .ai-text{font-size:12.5px;color:var(--ink2);line-height:1.4;}
 .ai-text.urgent{color:var(--red);font-weight:500;}
+.mini-todo-cell{padding:6px 0;}
+.mini-todo-row{display:flex;align-items:center;gap:7px;padding:3px 5px;border-radius:5px;margin-bottom:2px;}
+.mini-todo-row:hover{background:var(--gold-bg);}
+.mini-chk{width:15px;height:15px;border-radius:3px;border:2px solid var(--border2);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.mini-chk.done{background:var(--green);border-color:var(--green);}
+.mini-chk.done::after{content:'✓';color:#fff;font-size:9px;font-weight:700;}
+.mini-todo-text{font-size:12px;color:var(--ink2);flex:1;line-height:1.3;}
+.mini-todo-text.done{text-decoration:line-through;color:var(--ink4);}
+.mini-inline-due{font-size:10px;font-weight:500;}
+.mini-inline-due.ov{color:var(--red);}
+.mini-inline-due.td{color:var(--gold);}
+.mini-inline-due.ok{color:var(--ink4);}
+.mini-add-row{display:flex;gap:4px;margin-top:5px;align-items:center;}
+.mini-add-row input{font-size:11px;padding:3px 6px;border:1px solid var(--border2);border-radius:4px;background:var(--surf);color:var(--ink1);font-family:var(--f);}
+.mini-add-row input.mini-task-in{flex:1;min-width:0;}
+.mini-add-row input.mini-date-in{width:110px;}
+.mini-add-btn{padding:3px 8px;background:var(--gold);color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;}
 
 /* lead name */
 .lead-name-cell{font-weight:600;color:var(--ink);}
@@ -318,6 +335,8 @@ select{appearance:none;cursor:pointer;}
   .add-row{flex-wrap:wrap;}
   .di{width:100%;}
 }
+
+
 </style>
 </head>
 <body>
@@ -554,6 +573,24 @@ select{appearance:none;cursor:pointer;}
   </div>
 </div>
 
+<!-- Create Calendar Event Modal -->
+<div class="ov" id="cal-event-modal">
+  <div class="modal">
+    <div class="mt">Create Calendar Event</div>
+    <div class="fl"><label>Event Title</label><input id="cev-title" placeholder="e.g. Site visit – Maggard"/></div>
+    <div class="fl"><label>Date</label><input id="cev-date" type="date"/></div>
+    <div class="fl" style="display:flex;gap:10px;">
+      <div style="flex:1;"><label>Start Time</label><input id="cev-start" type="time" value="09:00"/></div>
+      <div style="flex:1;"><label>End Time</label><input id="cev-end" type="time" value="10:00"/></div>
+    </div>
+    <div class="fl"><label>Notes (optional)</label><input id="cev-notes" placeholder="Description or location"/></div>
+    <div class="ma">
+      <button class="btn bg2 sm" onclick="closeModal('cal-event-modal')">Cancel</button>
+      <button class="btn bp sm" onclick="saveCalendarEvent()">Save to Google Calendar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Board Add/Edit Modal -->
 <div class="ov" id="board-modal">
   <div class="modal">
@@ -566,6 +603,7 @@ select{appearance:none;cursor:pointer;}
     <div class="fl" id="bm-addr-wrap"><label>Address</label><input id="bm-addr" placeholder="123 Main St, Gainesville GA"/></div>
     <div class="fl" id="bm-lot-wrap"><label>Lot / City</label><input id="bm-lot" placeholder="e.g. 2-acre lot, Flowery Branch"/></div>
     <div class="fl"><label>Action Item / Status</label><input id="bm-action" placeholder="e.g. Waiting on ARB approval"/></div>
+    <div class="fl"><label>Action Due Date</label><input id="bm-action-due" type="date"/></div>
     <div class="fl"><label>Last Contact Date</label><input id="bm-contact" type="date"/></div>
     <div class="fl"><label>Call Notes &amp; Details</label><textarea id="bm-notes" placeholder="Call notes, follow-up details, key info about this lead or job…" style="min-height:100px;"></textarea></div>
     <div class="ma">
@@ -608,6 +646,17 @@ select{appearance:none;cursor:pointer;}
 </div>
 
 <script>
+// ── REAL DATA SEED (runs once per browser) ──
+(function(){
+  if(!localStorage.getItem('KB_SEEDED_v2')){
+    try{
+      localStorage.setItem('kb5_lists', JSON.stringify([{"id":"list1","name":"Brooke & Terry Maggard"},{"id":"list2","name":"Michelle & Wendell Nygren"},{"id":"movg5wqfc36x","name":"Company Misc."},{"id":"movg8ifxw9t8","name":"Matthews Residence"},{"id":"movg9ylnuohb","name":"The Romey"},{"id":"movgbv3j4rwh","name":"Danny Colella"},{"id":"movgcmh70ekh","name":"Accounting"},{"id":"movgdu8y8p4q","name":"Duncan Residence"},{"id":"moxcpvcylp5c","name":"Ashton Residence"},{"id":"moxd2hogsaud","name":"Hazelwood Residence"},{"id":"mp1q341e5bfy","name":"Misc. Leads"}]));
+      localStorage.setItem('kb5_todos', JSON.stringify([{"id":"movflbky75it","text":"Pull together proposed finishes","listId":"list1","due":"2026-05-12","done":false,"ord":2},{"id":"movflvnekkfb","text":"ARB Submittal","listId":"list1","due":"","done":false,"ord":2},{"id":"movfw3exmj02","text":"Apply for VA builder portal","listId":"list2","due":"","done":false,"ord":3},{"id":"movg6pq9udhv","text":"Pay Yoders and other statements","listId":"movg5wqfc36x","due":"","done":false,"ord":2},{"id":"movg6ypu91fq","text":"renew builders license","listId":"movg5wqfc36x","due":"2026-05-08","done":false,"ord":3},{"id":"movg7z67932p","text":"Set up car payments","listId":"movg5wqfc36x","due":"","done":false,"ord":8},{"id":"movg88nc3tys","text":"standards checklist","listId":"movg5wqfc36x","due":"","done":false,"ord":10},{"id":"movg9hlwcxie","text":"push scheduling","listId":"movg8ifxw9t8","due":"2026-05-12","done":false,"ord":2},{"id":"movg9sdvx30b","text":"shop out garage doors","listId":"movg8ifxw9t8","due":"2026-05-12","done":false,"ord":3},{"id":"movga4e6xfsu","text":"Push Finishes","listId":"movg9ylnuohb","due":"","done":false,"ord":0},{"id":"movgc59h2c79","text":"send revised plans","listId":"movgbv3j4rwh","due":"","done":false,"ord":0},{"id":"movgccbtnckg","text":"send land contacts","listId":"movgbv3j4rwh","due":"","done":false,"ord":1},{"id":"movrbp548tod","text":"clear out janurary cap one expenses","listId":"movgcmh70ekh","due":"","done":false,"ord":4},{"id":"moxaan6wnt5n","text":"schedule lumber delivery","listId":"movg8ifxw9t8","due":"2026-05-12","done":false,"ord":3},{"id":"moxaveafsn4o","text":"pay for builder bond","listId":"movg8ifxw9t8","due":"","done":false,"ord":5},{"id":"moxaxsyikaz0","text":"renew builders license","listId":"movg8ifxw9t8","due":"","done":false,"ord":6},{"id":"moxb5isj2c34","text":"invoice for wool","listId":"movgdu8y8p4q","due":"","done":false,"ord":0},{"id":"moxcqr98nux4","text":"study plan for more efficincy","listId":"moxcpvcylp5c","due":"2026-05-12","done":false,"ord":0},{"id":"moxct98luffy","text":"look at brick","listId":"list1","due":"2026-05-12","done":false,"ord":3},{"id":"moxd38dj2isj","text":"Send architects and review plans","listId":"moxd2hogsaud","due":"2026-05-12","done":false,"ord":0},{"id":"mp14ain50w8l","text":"redraw plan","listId":"list2","due":"2026-05-12","done":false,"ord":2},{"id":"mp14eqpceqiy","text":"select granite","listId":"movg9ylnuohb","due":"2026-05-12","done":false,"ord":4},{"id":"mp1q3hesnj3u","text":"Send Robert draftsman contacts","listId":"mp1q341e5bfy","due":"","done":false,"ord":0}]));
+      localStorage.setItem('kb5_board', JSON.stringify([{"id":"moveg3gquck7","type":"job","name":"Gregg Matthews","phase":"Concrete","pct":5,"addr":"4901 N Highway 101 Taylors SC 29687","action":"","lastContact":"2026-05-07","ord":0,"lot":"","notes":""},{"id":"movkueb2q7ga","type":"job","ord":1,"name":"The Romey","phase":"Final Selections","pct":80,"addr":"Lot 33 Longview","lot":"","action":"","lastContact":"2026-05-07","notes":""},{"id":"movkv6sj8yu7","type":"job","ord":2,"name":"Mark Taylor","phase":"Site Clearing","pct":1,"addr":"Longview Lot C3","lot":"","action":"","lastContact":"2026-05-05","notes":""},{"id":"movkx488jnm2","type":"job","ord":3,"name":"Maggard Residence","phase":"Under Contract- Permitting","pct":0,"addr":"Longview Lot 76","lot":"","action":"","lastContact":"2026-05-05","notes":""},{"id":"movky6jng7cy","type":"lead","ord":0,"name":"Michelle & Wendell Nygren","phase":"","pct":0,"addr":"","lot":"Longview Lot 43 (under contract)","action":"Prelim Plan Design","lastContact":"2026-05-05","notes":""},{"id":"movkz16r2jpl","type":"lead","ord":1,"name":"Mike Barefoot","phase":"Pre-Construction","pct":0,"addr":"","lot":"Longview Lot 32","action":"Waiting on response- positive call","lastContact":"2026-05-08","notes":"Call on 5.8 - left entry garage from shared easement - front door facing romey - small front yard - higher on lot - gone for 9 days back on 24th"},{"id":"movkzs1fg7zs","type":"lead","ord":2,"name":"Brooke Ashton","phase":"Pre-Construction","pct":0,"addr":"","lot":"11811 Old White Horse Rd, TR","action":"study plans for smaller floorplan","lastContact":"2026-05-08","notes":""},{"id":"movl1bjylrjh","type":"lead","ord":3,"name":"Nate Tipper","phase":"","pct":0,"addr":"","lot":"TBD- Looking for late","action":"Reschedule introductory call","lastContact":"2026-05-01","notes":""},{"id":"movl2jna8d65","type":"lead","ord":4,"name":"David Scott","phase":"","pct":0,"addr":"","lot":"Longview Lot 24","action":"Introductory meeting scheduled for 5.25","lastContact":"2026-05-06","notes":""},{"id":"movl4lhfmi4v","type":"lead","ord":5,"name":"Monica Hazelwood","phase":"","pct":0,"addr":"","lot":"Fountain Inn","action":"Send architects/ plan recommendation","lastContact":"2026-05-05","notes":""},{"id":"movl668h3iaw","type":"lead","ord":6,"name":"Danny Colella","phase":"","pct":0,"addr":"","lot":"TBD -searching for land","action":"Send recommended plan/ contacts","lastContact":"2026-04-27","notes":""},{"id":"movl8bx40h1e","type":"backburner","ord":1,"name":"Frank & Holly Bondra","phase":"","pct":0,"addr":"","lot":"729 Navigators Pt Seneca SC 29672","action":"Site meeting on 5.19","lastContact":"2026-05-05","notes":""},{"id":"movl9f9zzmtw","type":"backburner","ord":2,"name":"Laura Wykel","phase":"Pre-Construction","pct":0,"addr":"","lot":"520 Taylor Rd Honea Path, SC","action":"Saving for future build- house plan in hand","lastContact":"2026-05-06","notes":""},{"id":"movla9sneygb","type":"backburner","ord":3,"name":"Griggs Residence","phase":"","pct":0,"addr":"","lot":"Longview Lot 12","action":"","lastContact":"","notes":""},{"id":"moveg3gq5l0r","type":"backburner","ord":4,"name":"Jackie Olivia","phase":"Pre-Construction","pct":0,"addr":"","lot":"Riverside Project","action":"Email chain closed. Pending more thought","lastContact":"","notes":""}]));
+      localStorage.setItem('KB_SEEDED_v2','1');
+    }catch(e){}
+  }
+})();
 // ════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════
@@ -621,50 +670,81 @@ var dashDragSrc = null, dashDragBucket = null;
 var rowDragSrc = null, rowDragType = null;
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+var PIPELINE_LIST_ID = 'kb_pipeline_list';
+
+// ── SUPABASE CONFIG ──
+var SB_URL = 'https://zrrxgrxpokgyxvmckqzh.supabase.co';
+var SB_KEY = 'sb_publishable_MMzPWwUPFrOCeqFkgbZkVA_mPBntppz';
+function sbHeaders(){ return {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'}; }
+
+function sbUpsertLists(arr){
+  if(!arr.length) return Promise.resolve();
+  return fetch(SB_URL+'/rest/v1/kb_lists?on_conflict=id',{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(arr.map(function(l,i){return {id:l.id,name:l.name,ord:i};}))});
+}
+function sbUpsertTodos(arr){
+  if(!arr.length) return Promise.resolve();
+  return fetch(SB_URL+'/rest/v1/kb_todos?on_conflict=id',{method:'POST',headers:Object.assign({},sbHeaders(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(arr.map(function(t){return {id:t.id,text:t.text,list_id:t.listId,due:t.due||null,done:t.done,ord:t.ord||0};}))});
+}
+function sbDeleteList(id){
+  return fetch(SB_URL+'/rest/v1/kb_lists?id=eq.'+id,{method:'DELETE',headers:sbHeaders()});
+}
+function sbDeleteTodo(id){
+  return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'DELETE',headers:sbHeaders()});
+}
+
 function save() {
   localStorage.setItem('kb5_lists', JSON.stringify(lists));
   localStorage.setItem('kb5_todos', JSON.stringify(todos));
   localStorage.setItem('kb5_board', JSON.stringify(board));
+  // Sync lists and todos to Supabase (board stays local for now)
+  sbUpsertLists(lists).catch(function(){});
+  sbUpsertTodos(todos).catch(function(){});
 }
+
 function load() {
   var l = localStorage.getItem('kb5_lists');
   var t = localStorage.getItem('kb5_todos');
   var b = localStorage.getItem('kb5_board');
-  if (l) lists = JSON.parse(l);
-  if (t) todos = JSON.parse(t);
   if (b) board = JSON.parse(b);
-  if (!lists.length && !todos.length && !board.length) seed();
+  // Load todos/lists from Supabase first, fall back to localStorage
+  Promise.all([
+    fetch(SB_URL+'/rest/v1/kb_lists?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
+    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();})
+  ]).then(function(results){
+    var sbLists = results[0], sbTodos = results[1];
+    if(Array.isArray(sbLists) && sbLists.length){
+      lists = sbLists.map(function(l){return {id:l.id,name:l.name};});
+      localStorage.setItem('kb5_lists',JSON.stringify(lists));
+    } else if(l){ lists = JSON.parse(l); }
+    ensurePipelineList();
+    if(Array.isArray(sbTodos) && sbTodos.length){
+      todos = sbTodos.map(function(t){return {id:t.id,text:t.text,listId:t.list_id,due:t.due||'',done:t.done,ord:t.ord||0};});
+      localStorage.setItem('kb5_todos',JSON.stringify(todos));
+    } else if(t){ todos = JSON.parse(t); }
+    if(!lists.length && !todos.length) seed();
+    renderAll();
+  }).catch(function(){
+    // Supabase unreachable — fall back to localStorage
+    if(l) lists = JSON.parse(l);
+    if(t) todos = JSON.parse(t);
+    ensurePipelineList();
+    if(!lists.length && !todos.length && !board.length) seed();
+    renderAll();
+  });
+}
+
+function ensurePipelineList(){
+  if(!lists.find(function(l){return l.id===PIPELINE_LIST_ID;})){
+    lists.push({id:PIPELINE_LIST_ID, name:'Leads Pipeline'});
+  }
 }
 
 var PHASES = ['Pre-Construction','Demo','Framing','MEP Rough','Insulation','Drywall','Trim','Closeout'];
 
-function seed() {
-  lists = [
-    {id:'list1', name:'Brooke & Terry Maggard'},
-    {id:'list2', name:'Michelle & Wendell Nygren'},
-    {id:'list3', name:'John & Rose Pemberton'},
-  ];
-  todos = [
-    {id:uid(),text:'Confirm framing inspection date',listId:'list1',due:'2026-04-21',done:false,ord:0},
-    {id:uid(),text:'Reply to Terry re: site visit window',listId:'list1',due:'2026-04-21',done:false,ord:1},
-    {id:uid(),text:'Order dumpster — Phase 2',listId:'list1',due:'2026-04-20',done:false,ord:2},
-    {id:uid(),text:'Submit revised sauna layout to ARB',listId:'list1',due:'2026-04-25',done:false,ord:3},
-    {id:uid(),text:'Send Brooke finish selection matrix',listId:'list1',due:'2026-04-28',done:false,ord:4},
-    {id:uid(),text:'Finalize floor plan revisions',listId:'list2',due:'2026-04-22',done:false,ord:0},
-    {id:uid(),text:'Update primary bath layout in drawings',listId:'list2',due:'2026-04-21',done:false,ord:1},
-    {id:uid(),text:'Resubmit ARB package',listId:'list2',due:'2026-04-26',done:false,ord:2},
-    {id:uid(),text:'Follow up on proposal — 5 days no response',listId:'list3',due:'2026-04-20',done:false,ord:0},
-    {id:uid(),text:'Confirm safe room spec w/ engineer',listId:'list3',due:'2026-04-22',done:false,ord:1},
-    {id:uid(),text:'Prepare value engineering summary',listId:'list3',due:'2026-04-24',done:false,ord:2},
-  ];
-  board = [
-    {id:uid(),type:'job',name:'Brooke & Terry Maggard',phase:'Framing',pct:78,addr:'412 Ridgeline Dr, Gainesville GA',action:'Framing inspection next week',lastContact:'2026-04-25',ord:0},
-    {id:uid(),type:'job',name:'Michelle & Wendell Nygren',phase:'Pre-Construction',pct:35,addr:'88 Oakwood Ct, Gainesville GA',action:'ARB resubmission in progress',lastContact:'2026-04-11',ord:1},
-    {id:uid(),type:'lead',name:'John & Rose Pemberton',phase:'',pct:0,addr:'',lot:'TBD — Gainesville area',action:'Proposal sent — 5 days no response',lastContact:'2026-04-15',ord:0},
-    {id:uid(),type:'lead',name:'Evans Family',phase:'',pct:0,addr:'',lot:'2-acre lot, Flowery Branch',action:'Intro call scheduled',lastContact:'2026-04-18',ord:1},
-    {id:uid(),type:'backburner',name:'Sarah & Mike Thompson',phase:'',pct:0,addr:'',lot:'No lot yet',action:'Sent intake form',lastContact:'2026-04-19',ord:0},
-    {id:uid(),type:'backburner',name:'Riverside Lot Prospect',phase:'',pct:0,addr:'',lot:'Near Brooke & Terry job',action:'Left voicemail — no response',lastContact:null,ord:1},
-  ];
+function seed(){
+  lists=[{"id":"list1","name":"Brooke & Terry Maggard"},{"id":"list2","name":"Michelle & Wendell Nygren"},{"id":"movg5wqfc36x","name":"Company Misc."},{"id":"movg8ifxw9t8","name":"Matthews Residence"},{"id":"movg9ylnuohb","name":"The Romey"},{"id":"movgbv3j4rwh","name":"Danny Colella"},{"id":"movgcmh70ekh","name":"Accounting"},{"id":"movgdu8y8p4q","name":"Duncan Residence"},{"id":"moxcpvcylp5c","name":"Ashton Residence"},{"id":"moxd2hogsaud","name":"Hazelwood Residence"},{"id":"mp1q341e5bfy","name":"Misc. Leads"}];
+  todos=[{"id":"movflbky75it","text":"Pull together proposed finishes","listId":"list1","due":"2026-05-12","done":false,"ord":2},{"id":"movflvnekkfb","text":"ARB Submittal","listId":"list1","due":"","done":false,"ord":2},{"id":"movfw3exmj02","text":"Apply for VA builder portal","listId":"list2","due":"","done":false,"ord":3},{"id":"movg6pq9udhv","text":"Pay Yoders and other statements","listId":"movg5wqfc36x","due":"","done":false,"ord":2},{"id":"movg6ypu91fq","text":"renew builders license","listId":"movg5wqfc36x","due":"2026-05-08","done":false,"ord":3},{"id":"movg7z67932p","text":"Set up car payments","listId":"movg5wqfc36x","due":"","done":false,"ord":8},{"id":"movg88nc3tys","text":"standards checklist","listId":"movg5wqfc36x","due":"","done":false,"ord":10},{"id":"movg9hlwcxie","text":"push scheduling","listId":"movg8ifxw9t8","due":"2026-05-12","done":false,"ord":2},{"id":"movg9sdvx30b","text":"shop out garage doors","listId":"movg8ifxw9t8","due":"2026-05-12","done":false,"ord":3},{"id":"movga4e6xfsu","text":"Push Finishes","listId":"movg9ylnuohb","due":"","done":false,"ord":0},{"id":"movgc59h2c79","text":"send revised plans","listId":"movgbv3j4rwh","due":"","done":false,"ord":0},{"id":"movgccbtnckg","text":"send land contacts","listId":"movgbv3j4rwh","due":"","done":false,"ord":1},{"id":"movrbp548tod","text":"clear out janurary cap one expenses","listId":"movgcmh70ekh","due":"","done":false,"ord":4},{"id":"moxaan6wnt5n","text":"schedule lumber delivery","listId":"movg8ifxw9t8","due":"2026-05-12","done":false,"ord":3},{"id":"moxaveafsn4o","text":"pay for builder bond","listId":"movg8ifxw9t8","due":"","done":false,"ord":5},{"id":"moxaxsyikaz0","text":"renew builders license","listId":"movg8ifxw9t8","due":"","done":false,"ord":6},{"id":"moxb5isj2c34","text":"invoice for wool","listId":"movgdu8y8p4q","due":"","done":false,"ord":0},{"id":"moxcqr98nux4","text":"study plan for more efficincy","listId":"moxcpvcylp5c","due":"2026-05-12","done":false,"ord":0},{"id":"moxct98luffy","text":"look at brick","listId":"list1","due":"2026-05-12","done":false,"ord":3},{"id":"moxd38dj2isj","text":"Send architects and review plans","listId":"moxd2hogsaud","due":"2026-05-12","done":false,"ord":0},{"id":"mp14ain50w8l","text":"redraw plan","listId":"list2","due":"2026-05-12","done":false,"ord":2},{"id":"mp14eqpceqiy","text":"select granite","listId":"movg9ylnuohb","due":"2026-05-12","done":false,"ord":4},{"id":"mp1q3hesnj3u","text":"Send Robert draftsman contacts","listId":"mp1q341e5bfy","due":"","done":false,"ord":0}];
+  board=[{"id":"moveg3gquck7","type":"job","name":"Gregg Matthews","phase":"Concrete","pct":5,"addr":"4901 N Highway 101 Taylors SC 29687","action":"","lastContact":"2026-05-07","ord":0,"lot":"","notes":""},{"id":"movkueb2q7ga","type":"job","ord":1,"name":"The Romey","phase":"Final Selections","pct":80,"addr":"Lot 33 Longview","lot":"","action":"","lastContact":"2026-05-07","notes":""},{"id":"movkv6sj8yu7","type":"job","ord":2,"name":"Mark Taylor","phase":"Site Clearing","pct":1,"addr":"Longview Lot C3","lot":"","action":"","lastContact":"2026-05-05","notes":""},{"id":"movkx488jnm2","type":"job","ord":3,"name":"Maggard Residence","phase":"Under Contract- Permitting","pct":0,"addr":"Longview Lot 76","lot":"","action":"","lastContact":"2026-05-05","notes":""},{"id":"movky6jng7cy","type":"lead","ord":0,"name":"Michelle & Wendell Nygren","phase":"","pct":0,"addr":"","lot":"Longview Lot 43 (under contract)","action":"Prelim Plan Design","lastContact":"2026-05-05","notes":""},{"id":"movkz16r2jpl","type":"lead","ord":1,"name":"Mike Barefoot","phase":"Pre-Construction","pct":0,"addr":"","lot":"Longview Lot 32","action":"Waiting on response- positive call","lastContact":"2026-05-08","notes":"Call on 5.8 - left entry garage from shared easement - front door facing romey - small front yard - higher on lot - gone for 9 days back on 24th"},{"id":"movkzs1fg7zs","type":"lead","ord":2,"name":"Brooke Ashton","phase":"Pre-Construction","pct":0,"addr":"","lot":"11811 Old White Horse Rd, TR","action":"study plans for smaller floorplan","lastContact":"2026-05-08","notes":""},{"id":"movl1bjylrjh","type":"lead","ord":3,"name":"Nate Tipper","phase":"","pct":0,"addr":"","lot":"TBD- Looking for late","action":"Reschedule introductory call","lastContact":"2026-05-01","notes":""},{"id":"movl2jna8d65","type":"lead","ord":4,"name":"David Scott","phase":"","pct":0,"addr":"","lot":"Longview Lot 24","action":"Introductory meeting scheduled for 5.25","lastContact":"2026-05-06","notes":""},{"id":"movl4lhfmi4v","type":"lead","ord":5,"name":"Monica Hazelwood","phase":"","pct":0,"addr":"","lot":"Fountain Inn","action":"Send architects/ plan recommendation","lastContact":"2026-05-05","notes":""},{"id":"movl668h3iaw","type":"lead","ord":6,"name":"Danny Colella","phase":"","pct":0,"addr":"","lot":"TBD -searching for land","action":"Send recommended plan/ contacts","lastContact":"2026-04-27","notes":""},{"id":"movl8bx40h1e","type":"backburner","ord":1,"name":"Frank & Holly Bondra","phase":"","pct":0,"addr":"","lot":"729 Navigators Pt Seneca SC 29672","action":"Site meeting on 5.19","lastContact":"2026-05-05","notes":""},{"id":"movl9f9zzmtw","type":"backburner","ord":2,"name":"Laura Wykel","phase":"Pre-Construction","pct":0,"addr":"","lot":"520 Taylor Rd Honea Path, SC","action":"Saving for future build- house plan in hand","lastContact":"2026-05-06","notes":""},{"id":"movla9sneygb","type":"backburner","ord":3,"name":"Griggs Residence","phase":"","pct":0,"addr":"","lot":"Longview Lot 12","action":"","lastContact":"","notes":""},{"id":"moveg3gq5l0r","type":"backburner","ord":4,"name":"Jackie Olivia","phase":"Pre-Construction","pct":0,"addr":"","lot":"Riverside Project","action":"Email chain closed. Pending more thought","lastContact":"","notes":""}];
   save();
 }
 
@@ -841,8 +921,9 @@ function renderTodosByClient(){
     var total=lt.length;
     var pct=total?Math.round(done/total*100):0;
     var isOpen=sessionStorage.getItem('jopen_'+lst.id)!=='0';
-    return '<div class="jb" id="jb_'+lst.id+'">'
+    return '<div class="jb" id="jb_'+lst.id+'" draggable="true" data-listid="'+lst.id+'" ondragstart="listDragStart(event)" ondragover="listDragOver(event)" ondragleave="listDragLeave(event)" ondrop="listDrop(event)" ondragend="listDragEnd(event)">'
       +'<div class="jbh" onclick="toggleJb(\''+lst.id+'\')">'
+      +'<div style="color:var(--ink4);font-size:14px;cursor:grab;padding:0 6px 0 0;flex-shrink:0;" onclick="event.stopPropagation()" title="Drag to reorder">&#8942;&#8942;</div>'
       +'<div class="ja" style="background:'+jc(lst.id)+'">'+he(ini(lst.name))+'</div>'
       +'<div style="flex:1;min-width:0;">'
       +'<div class="jn">'+he(lst.name)+'</div>'
@@ -935,7 +1016,7 @@ function addInline(listId){
   save();renderAll();
   setTimeout(function(){var b=document.getElementById('jbt_'+listId);if(b){b.classList.add('open');var c=document.getElementById('cv_'+listId);if(c)c.classList.add('open');}},30);
 }
-function deleteTodo(id){todos=todos.filter(function(t){return t.id!==id;});save();renderAll();}
+function deleteTodo(id){sbDeleteTodo(id).catch(function(){});todos=todos.filter(function(t){return t.id!==id;});save();renderAll();}
 
 // drag within client view
 function trDragStart(e){tdDragSrc=e.currentTarget;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',e.currentTarget.dataset.id);}
@@ -975,6 +1056,7 @@ function saveList(){
   save();renderAll();closeModal('list-modal');
 }
 function deleteList(){
+  sbDeleteList(editListId).catch(function(){});
   todos=todos.filter(function(t){return t.listId!==editListId;});
   lists=lists.filter(function(l){return l.id!==editListId;});
   save();renderAll();closeModal('list-modal');
@@ -1002,7 +1084,61 @@ function saveTaskModal(){
   t.listId=document.getElementById('task-modal-job').value;
   save();renderAll();closeModal('task-modal');
 }
-function deleteTaskModal(){todos=todos.filter(function(t){return t.id!==editTaskId;});save();renderAll();closeModal('task-modal');}
+function deleteTaskModal(){sbDeleteTodo(editTaskId).catch(function(){});todos=todos.filter(function(t){return t.id!==editTaskId;});save();renderAll();closeModal('task-modal');}
+
+// ════════════════════════════════════════════
+// PIPELINE TODO HELPERS
+// ════════════════════════════════════════════
+function miniTodoCell(boardId){
+  var items=todos.filter(function(t){return t.boardRef===boardId;});
+  var active=items.filter(function(t){return !t.done;});
+  var html='<div class="mini-todo-cell" onclick="event.stopPropagation()">';
+  if(active.length){
+    html+=active.map(function(t){
+      var n=dd(t.due);
+      var dueCls=t.due?(n<0?'ov':n===0?'td':'ok'):'';
+      var dueLabel=t.due?(n<0?Math.abs(n)+'d overdue':n===0?'Today':fd(t.due)):'';
+      var chkFn='miniCheck("'+t.id+'","'+boardId+'")';
+      var taskDisplay=he(t.text)+(dueLabel?' <span class="mini-inline-due '+dueCls+'">· '+dueLabel+'</span>':'');
+      return '<div class="mini-todo-row">'
+        +'<div class="mini-chk'+(t.done?' done':'')+'" onclick="'+chkFn+'"></div>'
+        +'<span class="mini-todo-text'+(t.done?' done':'')+'">'+taskDisplay+'</span>'
+        +'</div>';
+    }).join('');
+  }
+  var addFn='miniAdd("'+boardId+'")';
+  var keyFn='if(event.key==\'Enter\')'+addFn;
+  html+='<div class="mini-add-row">'
+    +'<input class="mini-task-in" id="mti_'+boardId+'" placeholder="Add action item…" onkeydown="'+keyFn+'" />'
+    +'<button class="mini-add-btn" onclick="'+addFn+'">+ Add</button>'
+    +'</div>';
+  html+='</div>';
+  return html;
+}
+function miniCheck(todoId, boardId){
+  var t=todos.find(function(x){return x.id===todoId;});if(!t)return;
+  t.done=!t.done;
+  save();
+  renderBoard();
+  renderTodos();
+  renderDash();
+}
+function miniAdd(boardId){
+  var tin=document.getElementById('mti_'+boardId);
+  var din=document.getElementById('mtd_'+boardId);
+  if(!tin)return;
+  var text=tin.value.trim();if(!text)return;
+  var due=din?din.value:'';
+  ensurePipelineList();
+  var lt=todos.filter(function(t){return t.listId===PIPELINE_LIST_ID;});
+  var b=board.find(function(x){return x.id===boardId;});
+  todos.push({id:uid(),text:text+(b?' — '+b.name:''),listId:PIPELINE_LIST_ID,due:due,done:false,ord:lt.length,boardRef:boardId});
+  tin.value='';if(din)din.value='';
+  save();
+  renderBoard();
+  renderTodos();
+  renderDash();
+}
 
 // ════════════════════════════════════════════
 // BOARD
@@ -1037,7 +1173,7 @@ function renderBoard(){
         +'<td onclick="event.stopPropagation()"><div class="move-btns"><button class="mv-btn" onclick="moveRow(\''+l.id+'\',\''+type+'\',-1)">&#9650;</button><button class="mv-btn" onclick="moveRow(\''+l.id+'\',\''+type+'\',1)">&#9660;</button></div></td>'
         +'<td><div class="lead-name-cell">'+he(l.name)+'</div>'+(l.notes?'<div style="font-size:11px;color:var(--gold);margin-top:2px;">📝 Notes</div>':'')+' </td>'
         +'<td><div style="font-size:13px;color:var(--ink2);">'+he(l.lot||'—')+'</div></td>'
-        +'<td><div class="ai-text'+(lcDays(l.lastContact)>7?' urgent':'')+'">'+he(l.action||'—')+'</div></td>'
+        +'<td onclick="event.stopPropagation()">'+miniTodoCell(l.id)+'</td>'
         +'<td onclick="event.stopPropagation();openLcModal(\''+l.id+'\')">'+lcBadge(l.lastContact)+'</td>'
         +'<td onclick="event.stopPropagation()" style="white-space:nowrap;"><button class="row-menu" data-mid="'+l.id+'" title="Move" style="font-size:13px;">&#8597;</button><button class="row-menu" onclick="openBoardEdit(\''+l.id+'\')">&#8943;</button></td>'
         +'</tr>';
@@ -1097,6 +1233,7 @@ function openBoardAddModal(type){
   document.getElementById('bm-addr').value='';
   document.getElementById('bm-lot').value='';
   document.getElementById('bm-action').value='';
+  document.getElementById('bm-action-due').value='';
   document.getElementById('bm-contact').value='';
   document.getElementById('bm-notes').value='';
   var isJob=(editBoardType==='job');
@@ -1117,6 +1254,7 @@ function openBoardEdit(id){
   document.getElementById('bm-addr').value=b.addr||'';
   document.getElementById('bm-lot').value=b.lot||'';
   document.getElementById('bm-action').value=b.action||'';
+  document.getElementById('bm-action-due').value=b.actionDue||'';
   document.getElementById('bm-contact').value=b.lastContact||'';
   document.getElementById('bm-notes').value=b.notes||'';
   var isJob=(b.type==='job');
@@ -1128,10 +1266,24 @@ function openBoardEdit(id){
 }
 function saveBoardItem(){
   var name=document.getElementById('bm-name').value.trim();if(!name)return;
-  var data={name:name,phase:document.getElementById('bm-phase').value,pct:parseInt(document.getElementById('bm-pct').value)||0,addr:document.getElementById('bm-addr').value.trim(),lot:document.getElementById('bm-lot').value.trim(),action:document.getElementById('bm-action').value.trim(),lastContact:document.getElementById('bm-contact').value,notes:document.getElementById('bm-notes').value.trim()};
+  var data={name:name,phase:document.getElementById('bm-phase').value,pct:parseInt(document.getElementById('bm-pct').value)||0,addr:document.getElementById('bm-addr').value.trim(),lot:document.getElementById('bm-lot').value.trim(),action:document.getElementById('bm-action').value.trim(),lastContact:document.getElementById('bm-contact').value,notes:document.getElementById('bm-notes').value.trim(),actionDue:document.getElementById('bm-action-due').value};
   if(editBoardId){var b=board.find(function(x){return x.id===editBoardId;});if(b)Object.assign(b,data);}
   else{var ct=board.filter(function(b){return b.type===editBoardType;}).length;board.push(Object.assign({id:uid(),type:editBoardType,ord:ct},data));}
+  syncBoardActionToTodos();
   save();renderAll();closeModal('board-modal');
+}
+function syncBoardActionToTodos(){
+  // Remove all existing pipeline todos linked to this board entry
+  todos=todos.filter(function(t){return t.boardRef!==editBoardId;});
+  var actionText=document.getElementById('bm-action').value.trim();
+  var actionDue=document.getElementById('bm-action-due').value;
+  var b=board.find(function(x){return x.id===editBoardId;});
+  if(!b&&editBoardId) b=board[board.length-1]; // newly added
+  if(actionText&&b){
+    ensurePipelineList();
+    var lt=todos.filter(function(t){return t.listId===PIPELINE_LIST_ID;});
+    todos.push({id:uid(),text:actionText+' — '+b.name,listId:PIPELINE_LIST_ID,due:actionDue,done:false,ord:lt.length,boardRef:b.id});
+  }
 }
 function deleteBoardItem(){board=board.filter(function(b){return b.id!==editBoardId;});save();renderAll();closeModal('board-modal');}
 
@@ -1462,15 +1614,42 @@ var calEvents=[], calAccessToken=null, calFetchInterval=null, calTokenClient=nul
 // ── PASTE YOUR GOOGLE OAUTH CLIENT ID HERE ──
 var CAL_CLIENT_ID='976456639036-nqk3mi2jcqbvf5aqmsl16lrnk0285cp1.apps.googleusercontent.com';
 
+function saveCalToken(token,expiresIn){
+  var expiry=Date.now()+((expiresIn||3500)*1000);
+  localStorage.setItem('kb_cal_token',JSON.stringify({token:token,expiry:expiry}));
+}
+function loadCalToken(){
+  try{
+    var saved=localStorage.getItem('kb_cal_token');
+    if(!saved)return null;
+    var obj=JSON.parse(saved);
+    if(Date.now()<obj.expiry-60000)return obj.token;
+    localStorage.removeItem('kb_cal_token');
+  }catch(e){}
+  return null;
+}
+function clearCalToken(){localStorage.removeItem('kb_cal_token');}
+
+function tryRestoreCalendar(){
+  var saved=loadCalToken();
+  if(!saved)return;
+  if(typeof google==='undefined'||!google.accounts){setTimeout(tryRestoreCalendar,800);return;}
+  calAccessToken=saved;
+  fetchCalendarEvents();
+  if(calFetchInterval)clearInterval(calFetchInterval);
+  calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);
+}
+
 function initCalendar(){
   if(!CAL_CLIENT_ID){alert('Paste your Google OAuth Client ID into CAL_CLIENT_ID in the script to connect Calendar.');return;}
   if(typeof google==='undefined'||!google.accounts){setTimeout(initCalendar,800);return;}
   calTokenClient=google.accounts.oauth2.initTokenClient({
     client_id:CAL_CLIENT_ID,
-    scope:'https://www.googleapis.com/auth/calendar.readonly',
+    scope:'https://www.googleapis.com/auth/calendar',
     callback:function(resp){
       if(resp.error)return;
       calAccessToken=resp.access_token;
+      saveCalToken(resp.access_token,resp.expires_in);
       fetchCalendarEvents();
       if(calFetchInterval)clearInterval(calFetchInterval);
       calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);
@@ -1490,7 +1669,7 @@ function fetchCalendarEvents(){
   fetch(url,{headers:{'Authorization':'Bearer '+calAccessToken}})
     .then(function(r){return r.json();})
     .then(function(data){
-      if(data.error){if(data.error.code===401)calAccessToken=null;return;}
+      if(data.error){if(data.error.code===401){calAccessToken=null;clearCalToken();}return;}
       calEvents=(data.items||[]).filter(function(ev){return ev.status!=='cancelled';});
       var act=todos.filter(function(t){return!t.done;});
       renderDayGrid(act);
@@ -1556,7 +1735,7 @@ function renderDayGrid(act){
     if(col.k==='today'){
       if(calAccessToken){
         h+='<div class="cal-bar">\uD83D\uDCC5 <span>Synced \u00b7 '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</span>'
-          +'<button onclick="fetchCalendarEvents()">\u21bb Refresh</button></div>';
+          +'<div style="display:flex;gap:4px;"><button onclick="openCreateEventModal()">+ Event</button><button onclick="fetchCalendarEvents()">\u21bb Refresh</button></div></div>';
       } else {
         h+='<div class="cal-bar">\uD83D\uDCC5 Google Calendar <button onclick="initCalendar()">Connect</button></div>';
       }
@@ -1693,6 +1872,79 @@ function downloadHTML(){
 }
 
 // ════════════════════════════════════════════
+// CREATE GOOGLE CALENDAR EVENT
+// ════════════════════════════════════════════
+function openCreateEventModal(){
+  if(!calAccessToken){alert('Connect Google Calendar first.');return;}
+  var today=new Date().toISOString().slice(0,10);
+  document.getElementById('cev-title').value='';
+  document.getElementById('cev-date').value=today;
+  document.getElementById('cev-start').value='09:00';
+  document.getElementById('cev-end').value='10:00';
+  document.getElementById('cev-notes').value='';
+  openModal('cal-event-modal');
+}
+function saveCalendarEvent(){
+  var title=document.getElementById('cev-title').value.trim();
+  var date=document.getElementById('cev-date').value;
+  var start=document.getElementById('cev-start').value;
+  var end=document.getElementById('cev-end').value;
+  var notes=document.getElementById('cev-notes').value.trim();
+  if(!title||!date||!start||!end){alert('Please fill in title, date, and times.');return;}
+  var body={
+    summary:title,
+    description:notes||undefined,
+    start:{dateTime:date+'T'+start+':00',timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone},
+    end:{dateTime:date+'T'+end+':00',timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone}
+  };
+  fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+calAccessToken,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).then(function(r){return r.json();})
+  .then(function(data){
+    if(data.error){alert('Error: '+data.error.message);return;}
+    closeModal('cal-event-modal');
+    fetchCalendarEvents();
+  }).catch(function(){alert('Failed to create event. Check your connection.');});
+}
+
+// ════════════════════════════════════════════
+// LIST DRAG-TO-REORDER
+// ════════════════════════════════════════════
+var listDragSrc=null;
+function listDragStart(e){
+  listDragSrc=e.currentTarget;
+  e.currentTarget.style.opacity='0.4';
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',e.currentTarget.dataset.listid);
+}
+function listDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  e.currentTarget.style.outline='2px solid var(--gold)';
+}
+function listDragLeave(e){e.currentTarget.style.outline='';}
+function listDrop(e){
+  e.preventDefault();
+  e.currentTarget.style.outline='';
+  if(!listDragSrc||listDragSrc===e.currentTarget)return;
+  var fromId=listDragSrc.dataset.listid;
+  var toId=e.currentTarget.dataset.listid;
+  var fi=lists.findIndex(function(l){return l.id===fromId;});
+  var ti=lists.findIndex(function(l){return l.id===toId;});
+  if(fi<0||ti<0)return;
+  var moved=lists.splice(fi,1)[0];
+  lists.splice(ti,0,moved);
+  save();renderAll();
+}
+function listDragEnd(e){
+  e.currentTarget.style.opacity='';
+  e.currentTarget.style.outline='';
+  listDragSrc=null;
+}
+
+// ════════════════════════════════════════════
 // AUTO RELOAD — keeps date/time current
 // ════════════════════════════════════════════
 (function(){
@@ -1712,9 +1964,9 @@ function downloadHTML(){
 // INIT
 // ════════════════════════════════════════════
 load();
-renderAll();
 fillSelects();
 if(!getApiKey()){setTimeout(function(){openApiKeyModal();},1000);}
+setTimeout(tryRestoreCalendar,1000);
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
