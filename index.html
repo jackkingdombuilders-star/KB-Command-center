@@ -1586,7 +1586,7 @@ function renderDayGrid(act){
     if(col.k==='today'){
       if(calAccessToken){
         h+='<div class="cal-bar">\uD83D\uDCC5 <span>Synced \u00b7 '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</span>'
-          +'<button onclick="fetchCalendarEvents()">\u21bb Refresh</button></div>';
+          +'<div style="display:flex;gap:4px;"><button onclick="openCreateEventModal()">+ Event</button><button onclick="fetchCalendarEvents()">\u21bb Refresh</button></div></div>';
       } else {
         h+='<div class="cal-bar">\uD83D\uDCC5 Google Calendar <button onclick="initCalendar()">Connect</button></div>';
       }
