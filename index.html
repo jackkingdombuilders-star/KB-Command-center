@@ -26,6 +26,7 @@ body{background:var(--surf);color:var(--ink);font-family:var(--f);font-size:14.5
 
 /* ââ TOPBAR ââ */
 .topbar{background:var(--card);border-bottom:2px solid var(--surf2);padding:0 20px;height:58px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100;box-shadow:var(--sh);}
+#sync-status-bar{position:fixed;bottom:70px;right:16px;font-size:11px;font-weight:600;color:var(--green);background:var(--card);border:1px solid var(--green-bd);border-radius:20px;padding:4px 12px;box-shadow:var(--sh);opacity:0;transition:opacity .4s;pointer-events:none;z-index:300;}
 .brand{display:flex;align-items:center;gap:9px;margin-right:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .bi{width:26px;height:26px;background:var(--ink);clip-path:polygon(50% 0%,100% 30%,100% 100%,0 100%,0 30%);position:relative;flex-shrink:0;}
 .bi::after{content:'';position:absolute;inset:5px;background:var(--gold);clip-path:polygon(50% 0%,100% 30%,100% 100%,0 100%,0 30%);}
@@ -349,6 +350,29 @@ select{appearance:none;cursor:pointer;}
 .bm-todo-del{background:none;border:none;color:var(--ink4);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;}
 .bm-todo-del:hover{color:var(--red);}
 .pipeline-todo-label{font-size:10px;font-weight:700;color:var(--ink4);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+/* ─── MOBILE BOTTOM NAV ─── */
+@media(max-width:700px){
+  .tabs{display:none!important;}
+  .main{padding:14px 12px 90px;}
+  .stat-row{grid-template-columns:1fr 1fr;}
+  .topbar .btn{font-size:10px!important;padding:4px 8px!important;}
+}
+.mob-nav{display:none;}
+@media(max-width:700px){
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--surf2);z-index:150;box-shadow:0 -2px 12px rgba(15,12,8,.10);}
+  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0 10px;font-size:10px;font-weight:600;color:var(--ink4);cursor:pointer;gap:3px;-webkit-tap-highlight-color:transparent;transition:color .13s;border:none;background:transparent;font-family:var(--f);}
+  .mob-tab.active{color:var(--gold);}
+  .mob-tab-icon{font-size:20px;line-height:1;}
+  /* On mobile, hide the planner inside dashboard — it gets its own tab */
+  #view-dashboard .day-grid-wrap{display:none;}
+}
+#view-planner .day-grid-wrap{display:block;}
+#view-planner .day-grid{flex-direction:column;width:100%!important;}
+#view-planner .dc{flex-shrink:0;min-width:unset;}
+@media(max-width:700px){
+  #view-planner .dc{width:100%!important;}
+  #view-planner .day-grid-scroll{overflow-x:unset;}
+}
 </style>
 </head>
 <body>
@@ -361,10 +385,29 @@ select{appearance:none;cursor:pointer;}
     <div class="tab" onclick="showView('board')"><span>Leads Board</span></div>
     <div class="tab" onclick="showView('email')"><span>AI Assistant</span></div>
   </div>
-  <button class="btn bg2 sm" onclick="openApiKeyModal()" title="Set Anthropic API key" style="font-size:11px;padding:5px 10px;">â API Key</button>
+  <button class="btn bg2 sm" onclick="openApiKeyModal()" title="Set Anthropic API key" style="font-size:11px;padding:5px 10px;">&#9881; API Key</button>
   <button class="btn bg2 sm" onclick="downloadHTML()" title="Save current state as HTML" style="font-size:11px;padding:5px 10px;">&#x2913; Save</button>
+  <button class="btn bg2 sm" onclick="pullFromSupabase(false)" title="Force sync from server" style="font-size:11px;padding:5px 10px;">&#8635; Sync</button>
   <button class="btn bp sm" onclick="handleAdd()">+ Add</button>
 </div>
+
+<div id="sync-status-bar"></div>
+
+<!-- Mobile bottom nav -->
+<nav class="mob-nav">
+  <button class="mob-tab active" id="mobt-dashboard" onclick="mobShowView('dashboard')">
+    <span class="mob-tab-icon">&#127968;</span>Dashboard
+  </button>
+  <button class="mob-tab" id="mobt-todos" onclick="mobShowView('todos')">
+    <span class="mob-tab-icon">&#9989;</span>To-Dos
+  </button>
+  <button class="mob-tab" id="mobt-planner" onclick="mobShowView('planner')">
+    <span class="mob-tab-icon">&#128197;</span>Planner
+  </button>
+  <button class="mob-tab" id="mobt-board" onclick="mobShowView('board')">
+    <span class="mob-tab-icon">&#127919;</span>Leads
+  </button>
+</nav>
 
 <div class="main">
 
@@ -402,6 +445,19 @@ select{appearance:none;cursor:pointer;}
       </div>
     </div>
     <div id="todos-page"></div>
+  </div>
+
+
+  <!-- Mobile Planner View -->
+  <div class="view" id="view-planner">
+    <div class="ph">
+      <div><div class="pt">Daily Planner</div><div class="ps">Drag tasks to time slots &middot; syncs across devices</div></div>
+      <button class="btn bg2 sm" id="cal-connect-btn-mob" onclick="if(!calAccessToken)initCalendar();else fetchCalendarEvents()">&#128197; Calendar</button>
+    </div>
+    <div class="day-grid-wrap">
+      <div class="day-grid-nav" id="day-grid-nav-mob"></div>
+      <div class="day-grid-scroll" id="day-grid-scroll-mob"><div class="day-grid" id="day-grid-mob"></div></div>
+    </div>
   </div>
 
   <!-- âââ BOARD âââ -->
@@ -704,40 +760,107 @@ var SB_URL='https://zrrxgrxpokgyxvmckqzh.supabase.co';
 var SB_KEY='sb_publishable_MMzPWwUPFrOCeqFkgbZkVA_mPBntppz';
 var PIPELINE_LIST_ID='kb_pipeline_list';
 var CAL_CLIENT_ID='976456639036-nqk3mi2jcqbvf5aqmsl16lrnk0285cp1.apps.googleusercontent.com';
+var _syncInterval=null;
+var _lastSyncTs=0;
 function sbH(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};}
 function upsertH(){var h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};h['Prefer']='resolution=merge-duplicates,return=minimal';return h;}
+
 function sbUpsertLists(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_lists?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(l,i){return{id:l.id,name:l.name,ord:i};}))});}
 function sbUpsertTodos(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_todos?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(t){return{id:t.id,text:t.text,list_id:t.listId,due:t.due||null,done:t.done,ord:t.ord||0,board_ref:t.boardRef||null};}))});}
+function sbUpsertBoard(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_board?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(b){return{id:b.id,type:b.type,name:b.name,phase:b.phase||'',pct:b.pct||0,addr:b.addr||'',lot:b.lot||'',action:b.action||'',last_contact:b.lastContact||null,ord:b.ord||0,notes:b.notes||''};}))});}
+function sbUpsertTimeMap(obj){var rows=Object.keys(obj).map(function(k){return{todo_id:k,time_slot:obj[k]};});if(!rows.length){return fetch(SB_URL+'/rest/v1/kb_timemap',{method:'DELETE',headers:sbH()});}return fetch(SB_URL+'/rest/v1/kb_timemap?on_conflict=todo_id',{method:'POST',headers:upsertH(),body:JSON.stringify(rows)});}
 function sbDelList(id){return fetch(SB_URL+'/rest/v1/kb_lists?id=eq.'+id,{method:'DELETE',headers:sbH()});}
-function sbDelTodo(id){return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'DELETE',headers:sbH()});}
+function sbDelTodo(id){
+  delete todoTimeMap[id];
+  fetch(SB_URL+'/rest/v1/kb_timemap?todo_id=eq.'+id,{method:'DELETE',headers:sbH()}).catch(function(){});
+  return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'DELETE',headers:sbH()});
+}
+function sbDelBoard(id){return fetch(SB_URL+'/rest/v1/kb_board?id=eq.'+id,{method:'DELETE',headers:sbH()});}
 function ensurePipelineList(){if(!lists.find(function(l){return l.id===PIPELINE_LIST_ID;})){lists.push({id:PIPELINE_LIST_ID,name:'Leads Pipeline'});}}
 
-// ── SAVE / LOAD ──
-// Always use localStorage as source of truth. Supabase is backup only.
+// ── SYNC STATUS UI ──
+function showSyncStatus(msg,color){var el=document.getElementById('sync-status-bar');if(!el)return;el.textContent=msg;el.style.color=color||'var(--green)';el.style.opacity='1';clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='0';},3500);}
+
+// ── SAVE: write local immediately, push to Supabase async ──
 function save(){
   localStorage.setItem('kb5_lists',JSON.stringify(lists));
   localStorage.setItem('kb5_todos',JSON.stringify(todos));
   localStorage.setItem('kb5_board',JSON.stringify(board));
-  sbUpsertLists(lists).catch(function(){});
-  sbUpsertTodos(todos).catch(function(){});
+  localStorage.setItem('kb_tmap',JSON.stringify(todoTimeMap));
+  Promise.all([
+    sbUpsertLists(lists),
+    sbUpsertTodos(todos),
+    sbUpsertBoard(board),
+    sbUpsertTimeMap(todoTimeMap)
+  ]).catch(function(){});
 }
+
+// ── LOAD: Supabase is source of truth, localStorage is cache ──
 function load(){
-  var lc=localStorage.getItem('kb5_lists');
-  var tc=localStorage.getItem('kb5_todos');
-  var bc=localStorage.getItem('kb5_board');
+  // Show cached data instantly so UI is not blank
   try{
-    if(lc) lists=JSON.parse(lc);
-    if(tc) todos=JSON.parse(tc);
-    if(bc) board=JSON.parse(bc);
+    var lc=localStorage.getItem('kb5_lists'),tc=localStorage.getItem('kb5_todos'),bc=localStorage.getItem('kb5_board');
+    if(lc)lists=JSON.parse(lc);
+    if(tc)todos=JSON.parse(tc);
+    if(bc)board=JSON.parse(bc);
   }catch(e){lists=[];todos=[];board=[];}
   ensurePipelineList();
-  if(!lists.length || !todos.length) seed();
+  if(!lists.length&&!todos.length)seed();
   renderAll();
-  // Sync to Supabase in background, never overwrite localStorage
+  // Then immediately pull from Supabase (source of truth)
+  pullFromSupabase(true);
+  // Background sync every 15 min — does NOT clear planner positions
+  if(_syncInterval)clearInterval(_syncInterval);
+  _syncInterval=setInterval(function(){pullFromSupabase(false);},15*60*1000);
+}
+
+function pullFromSupabase(isInit){
   Promise.all([
     fetch(SB_URL+'/rest/v1/kb_lists?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
-    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();})
-  ]).catch(function(){});
+    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
+    fetch(SB_URL+'/rest/v1/kb_board?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
+    fetch(SB_URL+'/rest/v1/kb_timemap?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();})
+  ]).then(function(results){
+    var sl=results[0],st=results[1],sb=results[2],stm=results[3];
+    var changed=false;
+    // Lists
+    if(Array.isArray(sl)&&sl.length){
+      lists=sl.map(function(l){return{id:l.id,name:l.name,ord:l.ord||0};});
+      ensurePipelineList();
+      changed=true;
+    }
+    // Todos — map snake_case columns back to camelCase
+    if(Array.isArray(st)&&st.length){
+      todos=st.map(function(t){return{id:t.id,text:t.text,listId:t.list_id,due:t.due||'',done:t.done,ord:t.ord||0,boardRef:t.board_ref||null};});
+      changed=true;
+    }
+    // Board
+    if(Array.isArray(sb)&&sb.length){
+      board=sb.map(function(b){return{id:b.id,type:b.type,name:b.name,phase:b.phase||'',pct:b.pct||0,addr:b.addr||'',lot:b.lot||'',action:b.action||'',lastContact:b.last_contact||'',ord:b.ord||0,notes:b.notes||''};});
+      changed=true;
+    }
+    // TimeMap — merge: keep local positions for keys not in remote (protects unsaved drags)
+    if(Array.isArray(stm)){
+      var remoteMap={};
+      stm.forEach(function(r){remoteMap[r.todo_id]=r.time_slot;});
+      // Merge: remote wins for known keys, keep local-only keys
+      Object.keys(remoteMap).forEach(function(k){todoTimeMap[k]=remoteMap[k];});
+      // Remove entries for todos that no longer exist
+      Object.keys(todoTimeMap).forEach(function(k){if(!todos.find(function(t){return t.id===k;}))delete todoTimeMap[k];});
+      changed=true;
+    }
+    if(changed){
+      localStorage.setItem('kb5_lists',JSON.stringify(lists));
+      localStorage.setItem('kb5_todos',JSON.stringify(todos));
+      localStorage.setItem('kb5_board',JSON.stringify(board));
+      localStorage.setItem('kb_tmap',JSON.stringify(todoTimeMap));
+      _lastSyncTs=Date.now();
+      renderAll();
+      if(!isInit)showSyncStatus('\u2714 Synced '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+    }
+  }).catch(function(err){
+    if(!isInit)showSyncStatus('\u26a0 Sync failed \u2014 working offline','var(--amber)');
+  });
 }
 
 var PHASES=['Pre-Construction','Demo','Framing','MEP Rough','Insulation','Drywall','Trim','Closeout'];
@@ -769,8 +892,13 @@ function showView(id){
   document.querySelectorAll('.tab').forEach(function(t){if(t.getAttribute('onclick')&&t.getAttribute('onclick').indexOf("'"+id+"'")>=0)t.classList.add('active');});
   curView=id;fillSelects();renderAll();
 }
+function mobShowView(id){
+  showView(id);
+  document.querySelectorAll('.mob-tab').forEach(function(t){t.classList.remove('active');});
+  var bt=document.getElementById('mobt-'+id);if(bt)bt.classList.add('active');
+}
 function handleAdd(){if(curView==='todos')openAddListModal();else if(curView==='board')openBoardAddModal();else openAddListModal();}
-function renderAll(){renderDash();renderTodos();renderBoard();renderEmail();}
+function renderAll(){renderDash();renderTodos();renderBoard();renderEmail();renderMobPlanner();}
 
 // ════════════════════════════════════════════
 // DASHBOARD
@@ -807,9 +935,13 @@ function quickCheck(id){
           item.style.transition='opacity .45s,max-height .5s,padding .5s,margin .5s';
           item.style.overflow='hidden';item.style.maxHeight=item.offsetHeight+'px';item.style.opacity='0';
           setTimeout(function(){item.style.maxHeight='0';item.style.padding='0';item.style.margin='0';
-            setTimeout(function(){todos=todos.filter(function(x){return x.id!==id;});save();renderAll();},460);
+            setTimeout(function(){
+              sbDelTodo(id).catch(function(){});
+              todos=todos.filter(function(x){return x.id!==id;});
+              save();renderAll();
+            },460);
           },100);
-        },3000);
+        },1500);
       }
     });
     var a=todos.filter(function(x){return!x.done;});
@@ -982,7 +1114,7 @@ function moveRow(id,type,dir){var items=board.filter(function(b){return b.type==
 function openBoardAddModal(type){editBoardId=null;editBoardType=type||'lead';document.getElementById('bm-title').textContent='Add to Board';document.getElementById('bm-del').style.display='none';['bm-name','bm-phase','bm-pct','bm-addr','bm-lot','bm-new-task','bm-new-due','bm-contact','bm-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var tl=document.getElementById('bm-todo-list');if(tl)tl.innerHTML='';var isJob=(editBoardType==='job');document.getElementById('bm-phase-wrap').style.display=isJob?'':'none';document.getElementById('bm-pct-wrap').style.display=isJob?'':'none';document.getElementById('bm-addr-wrap').style.display=isJob?'':'none';document.getElementById('bm-lot-wrap').style.display=isJob?'none':'';openModal('board-modal');}
 function openBoardEdit(id){var b=board.find(function(x){return x.id===id;});if(!b)return;editBoardId=id;editBoardType=b.type;document.getElementById('bm-title').textContent='Edit';document.getElementById('bm-del').style.display='';document.getElementById('bm-name').value=b.name||'';document.getElementById('bm-phase').value=b.phase||'Pre-Construction';document.getElementById('bm-pct').value=b.pct||'';document.getElementById('bm-addr').value=b.addr||'';document.getElementById('bm-lot').value=b.lot||'';document.getElementById('bm-contact').value=b.lastContact||'';document.getElementById('bm-notes').value=b.notes||'';document.getElementById('bm-new-task').value='';document.getElementById('bm-new-due').value='';var isJob=(b.type==='job');document.getElementById('bm-phase-wrap').style.display=isJob?'':'none';document.getElementById('bm-pct-wrap').style.display=isJob?'':'none';document.getElementById('bm-addr-wrap').style.display=isJob?'':'none';document.getElementById('bm-lot-wrap').style.display=isJob?'none':'';bmRenderTodos(id);openModal('board-modal');}
 function saveBoardItem(){var name=document.getElementById('bm-name').value.trim();if(!name)return;if(editBoardId){var b=board.find(function(x){return x.id===editBoardId;});if(b){b.name=name;b.phase=document.getElementById('bm-phase').value;b.pct=parseInt(document.getElementById('bm-pct').value)||0;b.addr=document.getElementById('bm-addr').value.trim();b.lot=document.getElementById('bm-lot').value.trim();b.lastContact=document.getElementById('bm-contact').value;b.notes=document.getElementById('bm-notes').value.trim();}}else{var ct=board.filter(function(x){return x.type===editBoardType;}).length;board.push({id:uid(),type:editBoardType,name:name,phase:document.getElementById('bm-phase').value,pct:parseInt(document.getElementById('bm-pct').value)||0,addr:document.getElementById('bm-addr').value.trim(),lot:document.getElementById('bm-lot').value.trim(),lastContact:document.getElementById('bm-contact').value,notes:document.getElementById('bm-notes').value.trim(),ord:ct});}save();renderAll();closeModal('board-modal');}
-function deleteBoardItem(){board=board.filter(function(b){return b.id!==editBoardId;});save();renderAll();closeModal('board-modal');}
+function deleteBoardItem(){sbDelBoard(editBoardId).catch(function(){});board=board.filter(function(b){return b.id!==editBoardId;});save();renderAll();closeModal('board-modal');}
 function openLcModal(id){lcBoardId=id;document.getElementById('lc-date').value=board.find(function(b){return b.id===id;})||'';openModal('lc-modal');}
 function saveLcOverride(){var b=board.find(function(x){return x.id===lcBoardId;});if(b){b.lastContact=document.getElementById('lc-date').value;save();renderAll();}closeModal('lc-modal');}
 
@@ -1155,18 +1287,75 @@ function downloadHTML(){var a=document.createElement('a');a.href=URL.createObjec
 // TIME-AWARE DAY GRID + GOOGLE CALENDAR
 // ════════════════════════════════════════════
 var todoTimeMap=(function(){try{return JSON.parse(localStorage.getItem('kb_tmap')||'{}');}catch(e){return{};}})();
-function saveTimeMap(){localStorage.setItem('kb_tmap',JSON.stringify(todoTimeMap));}
+function saveTimeMap(){
+  localStorage.setItem('kb_tmap',JSON.stringify(todoTimeMap));
+  // Also push to Supabase so planner positions sync across devices
+  sbUpsertTimeMap(todoTimeMap).catch(function(){});
+}
 function snap5(m){return Math.round(m/5)*5;}
 function timeKey(h,m){return ('0'+h).slice(-2)+':'+('0'+snap5(m)).slice(-2);}
 function fmtLD(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 
-var calEvents=[],calAccessToken=null,calFetchInterval=null,calTokenClient=null;
+var calEvents=[],calAccessToken=null,calFetchInterval=null,calTokenClient=null,calRefreshTimer=null;
 function saveCalToken(t,exp){localStorage.setItem('kb_cal_token',JSON.stringify({token:t,expiry:Date.now()+((exp||3500)*1000)}));}
 function loadCalToken(){try{var s=localStorage.getItem('kb_cal_token');if(!s)return null;var o=JSON.parse(s);if(Date.now()<o.expiry-60000)return o.token;localStorage.removeItem('kb_cal_token');}catch(e){}return null;}
-function clearCalToken(){localStorage.removeItem('kb_cal_token');}
-function tryRestoreCalendar(){var s=loadCalToken();if(!s)return;if(typeof google==='undefined'||!google.accounts){setTimeout(tryRestoreCalendar,800);return;}calAccessToken=s;fetchCalendarEvents();if(calFetchInterval)clearInterval(calFetchInterval);calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);}
-function initCalendar(){if(typeof google==='undefined'||!google.accounts){setTimeout(initCalendar,800);return;}calTokenClient=google.accounts.oauth2.initTokenClient({client_id:CAL_CLIENT_ID,scope:'https://www.googleapis.com/auth/calendar',callback:function(resp){if(resp.error)return;calAccessToken=resp.access_token;saveCalToken(resp.access_token,resp.expires_in);fetchCalendarEvents();if(calFetchInterval)clearInterval(calFetchInterval);calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);}});calTokenClient.requestAccessToken();}
-function fetchCalendarEvents(){if(!calAccessToken)return;var now=new Date(),s=new Date(now.getFullYear(),now.getMonth(),now.getDate()),e=new Date(now.getFullYear(),now.getMonth(),now.getDate()+plannerViewStart+plannerDays+2);fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin='+encodeURIComponent(s.toISOString())+'&timeMax='+encodeURIComponent(e.toISOString())+'&singleEvents=true&orderBy=startTime&maxResults=50',{headers:{'Authorization':'Bearer '+calAccessToken}}).then(function(r){return r.json();}).then(function(data){if(data.error){if(data.error.code===401){calAccessToken=null;clearCalToken();}return;}calEvents=(data.items||[]).filter(function(e){return e.status!=='cancelled';});renderAll();}).catch(function(){});}
+function clearCalToken(){localStorage.removeItem('kb_cal_token');calAccessToken=null;}
+function tryRestoreCalendar(){
+  var s=loadCalToken();
+  if(!s)return;
+  if(typeof google==='undefined'||!google.accounts){setTimeout(tryRestoreCalendar,500);return;}
+  calAccessToken=s;
+  fetchCalendarEvents();
+  if(calFetchInterval)clearInterval(calFetchInterval);
+  calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);
+  // Schedule silent re-auth before token expires (50 min)
+  scheduleCalRefresh(50*60*1000);
+}
+function scheduleCalRefresh(ms){
+  if(calRefreshTimer)clearTimeout(calRefreshTimer);
+  calRefreshTimer=setTimeout(function(){
+    // Attempt silent re-auth (no popup if user already granted)
+    if(calTokenClient){
+      try{calTokenClient.requestAccessToken({prompt:''});}catch(e){}
+    }
+  },ms);
+}
+function initCalendar(){
+  if(typeof google==='undefined'||!google.accounts){setTimeout(initCalendar,500);return;}
+  calTokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:CAL_CLIENT_ID,
+    scope:'https://www.googleapis.com/auth/calendar',
+    callback:function(resp){
+      if(resp.error)return;
+      calAccessToken=resp.access_token;
+      saveCalToken(resp.access_token,resp.expires_in);
+      fetchCalendarEvents();
+      if(calFetchInterval)clearInterval(calFetchInterval);
+      calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);
+      scheduleCalRefresh((resp.expires_in-120)*1000);
+      renderAll();
+    }
+  });
+  calTokenClient.requestAccessToken();
+}
+function fetchCalendarEvents(){
+  if(!calAccessToken)return;
+  var now=new Date(),s=new Date(now.getFullYear(),now.getMonth(),now.getDate()),e=new Date(now.getFullYear(),now.getMonth(),now.getDate()+plannerViewStart+plannerDays+2);
+  fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin='+encodeURIComponent(s.toISOString())+'&timeMax='+encodeURIComponent(e.toISOString())+'&singleEvents=true&orderBy=startTime&maxResults=50',{headers:{'Authorization':'Bearer '+calAccessToken}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(data.error){
+        if(data.error.code===401){
+          clearCalToken();
+          // Try silent re-auth
+          if(calTokenClient){try{calTokenClient.requestAccessToken({prompt:''});}catch(e){}}
+        }
+        return;
+      }
+      calEvents=(data.items||[]).filter(function(e){return e.status!=='cancelled';});
+      renderAll();
+    }).catch(function(){});
+}
 function openCreateEventModal(){if(!calAccessToken){alert('Connect Google Calendar first.');return;}var today=new Date().toISOString().slice(0,10);document.getElementById('cev-title').value='';document.getElementById('cev-date').value=today;document.getElementById('cev-start').value='09:00';document.getElementById('cev-end').value='10:00';document.getElementById('cev-notes').value='';openModal('cal-event-modal');}
 function saveCalendarEvent(){var title=document.getElementById('cev-title').value.trim();var date=document.getElementById('cev-date').value;var start=document.getElementById('cev-start').value||'09:00';var end=document.getElementById('cev-end').value||'10:00';var notes=document.getElementById('cev-notes').value.trim();if(!title||!date){alert('Fill in title and date.');return;}var startD=new Date(date+'T'+start+':00'),endD=new Date(date+'T'+end+':00');if(endD<=startD){endD=new Date(startD.getTime()+3600000);end=endD.toTimeString().slice(0,5);document.getElementById('cev-end').value=end;}var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;var body={summary:title,description:notes||undefined,start:{dateTime:date+'T'+start+':00',timeZone:tz},end:{dateTime:date+'T'+end+':00',timeZone:tz}};fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{method:'POST',headers:{'Authorization':'Bearer '+calAccessToken,'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(data){if(data.error){alert('Error: '+data.error.message);return;}closeModal('cal-event-modal');fetchCalendarEvents();}).catch(function(){alert('Failed to create event.');});}
 
@@ -1289,6 +1478,32 @@ function renderDayGrid(act){
     document.addEventListener('mouseup',function(){isDown=false;});
     scrl.addEventListener('mousemove',function(e){if(!isDown)return;e.preventDefault();var x=e.pageX-scrl.offsetLeft;scrl.scrollLeft=scrollLeft-(x-startX);});
   }
+}
+
+// Mobile planner tab — renders today + tomorrow as stacked columns
+function renderMobPlanner(){
+  var mobEl=document.getElementById('day-grid-mob');if(!mobEl)return;
+  var act=todos.filter(function(x){return!x.done;});
+  var h='';
+  // Render today and next 2 days stacked vertically
+  for(var i=0;i<3;i++){
+    // Reuse renderDayCol logic via renderDayGrid but into mobile element
+  }
+  // Just pipe same colsHtml into mobile grid for today/tmr
+  var colsHtml='';
+  for(var j=plannerViewStart;j<plannerViewStart+Math.min(3,plannerDays);j++){
+    // renderDayGrid already built this — just clone for mobile
+    colsHtml+=''; // placeholder — renderDayGrid fills day-grid; mob uses same data
+  }
+  // Actually: just clone day-grid content into mob element
+  var srcEl=document.getElementById('day-grid');
+  if(srcEl)mobEl.innerHTML=srcEl.innerHTML;
+  var mobNavEl=document.getElementById('day-grid-nav-mob');
+  var srcNav=document.getElementById('day-grid-nav');
+  if(srcNav&&mobNavEl)mobNavEl.innerHTML=srcNav.innerHTML;
+  // Update cal connect button
+  var cBtn=document.getElementById('cal-connect-btn-mob');
+  if(cBtn)cBtn.textContent=calAccessToken?'\uD83D\uDCC5 Synced':'\uD83D\uDCC5 Connect Calendar';
 }
 
 function qaAdd(ck,dayOffset){
