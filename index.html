@@ -29,40 +29,32 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 /* Prevent iOS zoom on input focus — must be 16px+ */
 @media(max-width:700px){input,select,textarea{font-size:16px!important;}}
-html{height:100%;overflow:hidden;}
-body{
-  height:100%;
+html,body{
+  min-height:100%;
   background:var(--surf);
   color:var(--ink);
   font-family:var(--f);
   font-size:14.5px;
   -webkit-font-smoothing:antialiased;
-  overflow:hidden; /* prevent body scroll — .main handles it */
+  overflow-x:hidden; /* no horizontal scroll ever */
 }
-/* Single scroll container — the main content area */
+/* Main content — natural document flow, iOS scrolls this natively */
 .main{
-  position:fixed;
-  top:58px; /* topbar height */
-  left:0;right:0;
-  bottom:0;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  padding:20px 16px 100px;
+  max-width:1060px;
+  margin:0 auto;
+  padding:78px 16px 120px; /* 78px = topbar height + gap */
 }
 @media(max-width:700px){
   .main{
-    top:52px; /* mobile topbar height */
-    bottom:calc(52px + env(safe-area-inset-bottom)); /* nav bar height */
-    padding:12px 12px 24px;
-    max-width:100%;
+    padding:64px 12px calc(80px + env(safe-area-inset-bottom));
+    /* 64px = mobile topbar, bottom = nav + home indicator */
   }
 }
 
 /* ââ TOPBAR ââ */
-.topbar{background:var(--card);border-bottom:2px solid var(--surf2);padding:0 20px;height:58px;display:flex;align-items:center;gap:8px;position:fixed;top:0;left:0;right:0;z-index:100;box-shadow:var(--sh);}
-@media(max-width:700px){.topbar{padding:0 12px;height:52px;gap:6px;}}
-#sync-status-bar{position:fixed;bottom:70px;right:16px;font-size:11px;font-weight:600;color:var(--green);background:var(--card);border:1px solid var(--green-bd);border-radius:20px;padding:4px 12px;box-shadow:var(--sh);opacity:0;transition:opacity .4s;pointer-events:none;z-index:300;}
+.topbar{background:var(--card);border-bottom:2px solid var(--surf2);padding:0 20px;height:58px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100;box-shadow:var(--sh);width:100%;}
+@media(max-width:700px){.topbar{padding:0 10px;height:52px;gap:5px;}}
+#sync-status-bar{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));right:16px;font-size:11px;font-weight:600;color:var(--green);background:var(--card);border:1px solid var(--green-bd);border-radius:20px;padding:4px 12px;box-shadow:var(--sh);opacity:0;transition:opacity .4s;pointer-events:none;z-index:300;}
 .brand{display:flex;align-items:center;gap:9px;margin-right:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .bi{width:26px;height:26px;background:var(--ink);clip-path:polygon(50% 0%,100% 30%,100% 100%,0 100%,0 30%);position:relative;flex-shrink:0;}
 .bi::after{content:'';position:absolute;inset:5px;background:var(--gold);clip-path:polygon(50% 0%,100% 30%,100% 100%,0 100%,0 30%);}
@@ -76,7 +68,6 @@ body{
 .tbg.red{background:var(--red-bg)!important;color:var(--red)!important;}
 
 /* ââ LAYOUT ââ */
-.main{max-width:1060px;margin:0 auto;}
 .view{display:none;}
 .view.active{display:block;animation:fu .2s ease both;}
 @keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
