@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="KB Command"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#FAF7F2"/>
 <title>Kingdom Builders</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -353,13 +358,13 @@ select{appearance:none;cursor:pointer;}
 /* ─── MOBILE BOTTOM NAV ─── */
 @media(max-width:700px){
   .tabs{display:none!important;}
-  .main{padding:14px 12px 90px;}
+  .main{padding:14px 12px calc(90px + env(safe-area-inset-bottom));}
   .stat-row{grid-template-columns:1fr 1fr;}
   .topbar .btn{font-size:10px!important;padding:4px 8px!important;}
 }
 .mob-nav{display:none;}
 @media(max-width:700px){
-  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--surf2);z-index:150;box-shadow:0 -2px 12px rgba(15,12,8,.10);}
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--surf2);z-index:150;box-shadow:0 -2px 12px rgba(15,12,8,.10);padding-bottom:env(safe-area-inset-bottom);}
   .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0 10px;font-size:10px;font-weight:600;color:var(--ink4);cursor:pointer;gap:3px;-webkit-tap-highlight-color:transparent;transition:color .13s;border:none;background:transparent;font-family:var(--f);}
   .mob-tab.active{color:var(--gold);}
   .mob-tab-icon{font-size:20px;line-height:1;}
@@ -783,16 +788,25 @@ function showSyncStatus(msg,color){var el=document.getElementById('sync-status-b
 
 // ── SAVE: write local immediately, push to Supabase async ──
 function save(){
+  // Write to localStorage immediately (instant, works offline)
   localStorage.setItem('kb5_lists',JSON.stringify(lists));
   localStorage.setItem('kb5_todos',JSON.stringify(todos));
   localStorage.setItem('kb5_board',JSON.stringify(board));
   localStorage.setItem('kb_tmap',JSON.stringify(todoTimeMap));
+  // Push to Supabase async — never block UI, never lose calendar token
+  var _calBackup=localStorage.getItem('kb_cal_token');
   Promise.all([
     sbUpsertLists(lists),
     sbUpsertTodos(todos),
     sbUpsertBoard(board),
     sbUpsertTimeMap(todoTimeMap)
-  ]).catch(function(){});
+  ]).then(function(){
+    if(_calBackup&&!localStorage.getItem('kb_cal_token'))localStorage.setItem('kb_cal_token',_calBackup);
+    showSyncStatus('\u2714 Saved');
+  }).catch(function(){
+    if(_calBackup&&!localStorage.getItem('kb_cal_token'))localStorage.setItem('kb_cal_token',_calBackup);
+    showSyncStatus('\u26a0 Saved locally \u2014 will sync when online','var(--amber)');
+  });
 }
 
 // ── LOAD: Supabase is source of truth, localStorage is cache ──
@@ -815,40 +829,69 @@ function load(){
 }
 
 function pullFromSupabase(isInit){
+  // Save calendar token before any sync so it is never lost
+  var _calTokenBackup=localStorage.getItem('kb_cal_token');
   Promise.all([
-    fetch(SB_URL+'/rest/v1/kb_lists?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
-    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
-    fetch(SB_URL+'/rest/v1/kb_board?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();}),
-    fetch(SB_URL+'/rest/v1/kb_timemap?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.json();})
+    fetch(SB_URL+'/rest/v1/kb_lists?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
+    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
+    fetch(SB_URL+'/rest/v1/kb_board?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
+    fetch(SB_URL+'/rest/v1/kb_timemap?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];})
   ]).then(function(results){
     var sl=results[0],st=results[1],sb=results[2],stm=results[3];
     var changed=false;
-    // Lists
+
+    // Restore calendar token — sync must NEVER clear it
+    if(_calTokenBackup&&!localStorage.getItem('kb_cal_token')){
+      localStorage.setItem('kb_cal_token',_calTokenBackup);
+    }
+
+    // Lists — only replace if Supabase has data
     if(Array.isArray(sl)&&sl.length){
       lists=sl.map(function(l){return{id:l.id,name:l.name,ord:l.ord||0};});
       ensurePipelineList();
       changed=true;
+    } else if(lists.length){
+      // Supabase empty but we have local — push local up
+      sbUpsertLists(lists).catch(function(){});
     }
-    // Todos — map snake_case columns back to camelCase
+
+    // Todos — merge: remote wins per id, local-only items kept
     if(Array.isArray(st)&&st.length){
-      todos=st.map(function(t){return{id:t.id,text:t.text,listId:t.list_id,due:t.due||'',done:t.done,ord:t.ord||0,boardRef:t.board_ref||null};});
+      var remoteIds={};
+      var remoteTodos=st.map(function(t){
+        remoteIds[t.id]=true;
+        return{id:t.id,text:t.text,listId:t.list_id,due:t.due||'',done:t.done,ord:t.ord||0,boardRef:t.board_ref||null};
+      });
+      // Keep local todos not yet in Supabase (just created offline)
+      var localOnly=todos.filter(function(t){return !remoteIds[t.id]&&!t.done;});
+      todos=remoteTodos.concat(localOnly);
+      // Push any local-only ones up immediately
+      if(localOnly.length)sbUpsertTodos(localOnly).catch(function(){});
       changed=true;
+    } else if(todos.length){
+      sbUpsertTodos(todos).catch(function(){});
     }
-    // Board
+
+    // Board — only replace if Supabase has data
     if(Array.isArray(sb)&&sb.length){
       board=sb.map(function(b){return{id:b.id,type:b.type,name:b.name,phase:b.phase||'',pct:b.pct||0,addr:b.addr||'',lot:b.lot||'',action:b.action||'',lastContact:b.last_contact||'',ord:b.ord||0,notes:b.notes||''};});
       changed=true;
+    } else if(board.length){
+      sbUpsertBoard(board).catch(function(){});
     }
-    // TimeMap — merge: keep local positions for keys not in remote (protects unsaved drags)
-    if(Array.isArray(stm)){
+
+    // TimeMap — merge remote into local, never wipe planner positions
+    if(Array.isArray(stm)&&stm.length){
       var remoteMap={};
       stm.forEach(function(r){remoteMap[r.todo_id]=r.time_slot;});
-      // Merge: remote wins for known keys, keep local-only keys
       Object.keys(remoteMap).forEach(function(k){todoTimeMap[k]=remoteMap[k];});
-      // Remove entries for todos that no longer exist
-      Object.keys(todoTimeMap).forEach(function(k){if(!todos.find(function(t){return t.id===k;}))delete todoTimeMap[k];});
+      // Only remove timemap entries for todos confirmed gone everywhere
+      Object.keys(todoTimeMap).forEach(function(k){
+        if(!todos.find(function(t){return t.id===k;}))delete todoTimeMap[k];
+      });
       changed=true;
     }
+
     if(changed){
       localStorage.setItem('kb5_lists',JSON.stringify(lists));
       localStorage.setItem('kb5_todos',JSON.stringify(todos));
@@ -857,9 +900,13 @@ function pullFromSupabase(isInit){
       _lastSyncTs=Date.now();
       renderAll();
       if(!isInit)showSyncStatus('\u2714 Synced '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+    } else {
+      if(!isInit)showSyncStatus('\u2714 Up to date');
     }
   }).catch(function(err){
-    if(!isInit)showSyncStatus('\u26a0 Sync failed \u2014 working offline','var(--amber)');
+    // On any network error keep local data and calendar intact
+    if(_calTokenBackup)localStorage.setItem('kb_cal_token',_calTokenBackup);
+    if(!isInit)showSyncStatus('\u26a0 Offline \u2014 changes saved locally','var(--amber)');
   });
 }
 
@@ -1302,14 +1349,18 @@ function loadCalToken(){try{var s=localStorage.getItem('kb_cal_token');if(!s)ret
 function clearCalToken(){localStorage.removeItem('kb_cal_token');calAccessToken=null;}
 function tryRestoreCalendar(){
   var s=loadCalToken();
-  if(!s)return;
-  if(typeof google==='undefined'||!google.accounts){setTimeout(tryRestoreCalendar,500);return;}
+  if(!s){return;}
+  // Restore token in memory immediately — don't wait for Google SDK
   calAccessToken=s;
-  fetchCalendarEvents();
-  if(calFetchInterval)clearInterval(calFetchInterval);
-  calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);
-  // Schedule silent re-auth before token expires (50 min)
-  scheduleCalRefresh(50*60*1000);
+  // Fetch calendar once Google SDK is ready
+  function doRestore(){
+    if(typeof google==='undefined'||!google.accounts){setTimeout(doRestore,500);return;}
+    fetchCalendarEvents();
+    if(calFetchInterval)clearInterval(calFetchInterval);
+    calFetchInterval=setInterval(fetchCalendarEvents,20*60*1000);
+    scheduleCalRefresh(50*60*1000);
+  }
+  doRestore();
 }
 function scheduleCalRefresh(ms){
   if(calRefreshTimer)clearTimeout(calRefreshTimer);
@@ -1553,10 +1604,13 @@ setInterval(function(){
 // ════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════
+// Restore calendar token into memory FIRST before anything else runs
+(function(){var s=loadCalToken();if(s)calAccessToken=s;})();
 load();
 fillSelects();
-if(!getApiKey()){setTimeout(function(){openApiKeyModal();},1000);}
-setTimeout(tryRestoreCalendar,1000);
+if(!getApiKey()){setTimeout(function(){openApiKeyModal();},1500);}
+// Try full calendar restore after Google SDK has time to load
+setTimeout(tryRestoreCalendar,2000);
 
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
