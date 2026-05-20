@@ -359,21 +359,35 @@ select{appearance:none;cursor:pointer;}
 .bm-todo-del{background:none;border:none;color:var(--ink4);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;}
 .bm-todo-del:hover{color:var(--red);}
 .pipeline-todo-label{font-size:10px;font-weight:700;color:var(--ink4);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
-/* ─── MOBILE BOTTOM NAV ─── */
+/* ─── MOBILE (iPhone 16 Pro Max optimized — 430px) ─── */
 @media(max-width:700px){
   .tabs{display:none!important;}
-  .main{padding:14px 12px calc(90px + env(safe-area-inset-bottom));}
-  .stat-row{grid-template-columns:1fr 1fr;}
-  .topbar .btn{font-size:10px!important;padding:4px 8px!important;}
+  .mob-hide{display:none!important;}
+  .mob-btn-wrap{display:flex;gap:5px;align-items:center;}
+  .topbar{padding:0 12px;height:52px;gap:6px;}
+  .topbar img{height:38px!important;padding-right:10px!important;margin-right:10px!important;}
+  .topbar .btn{font-size:10px!important;padding:4px 7px!important;}
+  .bn{font-size:13px;}
+  .main{padding:12px 12px calc(72px + env(safe-area-inset-bottom));max-width:100%;}
+  .stat-row{grid-template-columns:1fr 1fr;gap:10px;}
+  .sc{padding:12px 14px;}
+  .ph{flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .pt{font-size:20px;}
+  .di{width:100%;}
+  .add-row{flex-wrap:wrap;}
+  .jb{margin-bottom:8px;}
+  .btable thead th:nth-child(3),.btable td:nth-child(3),.btable thead th:nth-child(4),.btable td:nth-child(4){display:none;}
+  .tr{flex-wrap:wrap;}
+  #view-dashboard .day-grid-wrap{display:none;}
+  .modal{max-width:calc(100vw - 24px);padding:18px 16px;}
+  input,select,textarea{font-size:16px!important;}
 }
 .mob-nav{display:none;}
 @media(max-width:700px){
-  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:2px solid var(--surf2);z-index:150;box-shadow:0 -2px 12px rgba(15,12,8,.10);padding-bottom:env(safe-area-inset-bottom);}
-  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0 10px;font-size:10px;font-weight:600;color:var(--ink4);cursor:pointer;gap:3px;-webkit-tap-highlight-color:transparent;transition:color .13s;border:none;background:transparent;font-family:var(--f);}
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1.5px solid var(--surf2);z-index:150;box-shadow:0 -2px 16px rgba(15,12,8,.10);padding-bottom:env(safe-area-inset-bottom);}
+  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0 10px;font-size:10px;font-weight:600;color:var(--ink4);cursor:pointer;gap:3px;-webkit-tap-highlight-color:transparent;transition:color .15s;border:none;background:transparent;font-family:var(--f);min-height:52px;}
   .mob-tab.active{color:var(--gold);}
-  .mob-tab-icon{font-size:20px;line-height:1;}
-  /* On mobile, hide the planner inside dashboard — it gets its own tab */
-  #view-dashboard .day-grid-wrap{display:none;}
+  .mob-tab-icon{font-size:22px;line-height:1;}
 }
 #view-planner .day-grid-wrap{display:block;}
 #view-planner .day-grid{flex-direction:column;width:100%!important;}
@@ -381,6 +395,7 @@ select{appearance:none;cursor:pointer;}
 @media(max-width:700px){
   #view-planner .dc{width:100%!important;}
   #view-planner .day-grid-scroll{overflow-x:unset;}
+  #view-planner .day-grid{gap:10px;}
 }
 </style>
 </head>
@@ -394,10 +409,12 @@ select{appearance:none;cursor:pointer;}
     <div class="tab" onclick="showView('board')"><span>Leads Board</span></div>
     <div class="tab" onclick="showView('email')"><span>AI Assistant</span></div>
   </div>
-  <button class="btn bg2 sm" onclick="openApiKeyModal()" title="Set Anthropic API key" style="font-size:11px;padding:5px 10px;">&#9881; API Key</button>
-  <button class="btn bg2 sm" onclick="downloadHTML()" title="Save current state as HTML" style="font-size:11px;padding:5px 10px;">&#x2913; Save</button>
-  <button class="btn bg2 sm" onclick="pullFromSupabase(false)" title="Force sync from server" style="font-size:11px;padding:5px 10px;">&#8635; Sync</button>
-  <button class="btn bp sm" onclick="handleAdd()">+ Add</button>
+  <div class="mob-btn-wrap">
+    <button class="btn bg2 sm mob-hide" onclick="openApiKeyModal()" title="Set Anthropic API key" style="font-size:11px;padding:5px 10px;">&#9881; API Key</button>
+    <button class="btn bg2 sm mob-hide" onclick="downloadHTML()" title="Save current state as HTML" style="font-size:11px;padding:5px 10px;">&#x2913; Save</button>
+    <button class="btn bg2 sm" onclick="pullFromSupabase(false)" title="Sync" style="font-size:11px;padding:5px 10px;">&#8635; Sync</button>
+    <button class="btn bp sm" onclick="handleAdd()">+ Add</button>
+  </div>
 </div>
 
 <div id="sync-status-bar"></div>
@@ -1526,14 +1543,7 @@ function renderDayGrid(act){
   var colsHtml='';
   for(var i=plannerViewStart;i<plannerViewStart+plannerDays;i++){colsHtml+=renderDayCol(i);}
   var el=document.getElementById('day-grid');if(el)el.innerHTML=colsHtml;
-  // Scroll via two-finger/trackpad only — no mouse drag (was causing accidental scrolling)
-  var scrl=document.getElementById('day-grid-scroll');
-  if(scrl&&!scrl._scrollInit){
-    scrl._scrollInit=true;
-    // Allow horizontal scroll with two-finger swipe on trackpad natively
-    // Intercept single-finger mouse drag and block it
-    scrl.addEventListener('mousedown',function(e){e.preventDefault();},{passive:false});
-  }
+  // No mouse-drag scroll handler needed — CSS touch-action:pan-x handles it natively
 }
 
 // Mobile planner tab — renders today + tomorrow as stacked columns
