@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="KB Command"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#FAF7F2"/>
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;KB Command&quot;,&quot;short_name&quot;:&quot;KB Command&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;background_color&quot;:&quot;%23FAF7F2&quot;,&quot;theme_color&quot;:&quot;%23FAF7F2&quot;}"/>
 <title>Kingdom Builders</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -26,6 +27,8 @@
   --fh:'Cormorant Garamond',serif;--f:'DM Sans',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+/* Prevent iOS zoom on input focus — must be 16px+ */
+@media(max-width:700px){input,select,textarea{font-size:16px!important;}}
 html,body{height:100%;}
 body{background:var(--surf);color:var(--ink);font-family:var(--f);font-size:14.5px;-webkit-font-smoothing:antialiased;}
 
@@ -108,8 +111,9 @@ select{appearance:none;cursor:pointer;}
 .pi-meta{font-size:11px;color:var(--ink3);}
 
 /* ââ PLAN YOUR DAY â time-aware columns ââ */
-.day-grid-wrap{}.day-grid-nav{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;}.day-grid-nav-btn{background:var(--card);border:1px solid var(--border2);border-radius:var(--rs);padding:4px 10px;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink2);font-family:var(--f);transition:all .13s;}.day-grid-nav-btn:hover{background:var(--surf2);}.day-grid-nav-btn.active{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-bd);}.day-grid-scroll{overflow-x:auto;scroll-behavior:smooth;padding-bottom:8px;-webkit-overflow-scrolling:touch;}.day-grid-scroll::-webkit-scrollbar{height:5px;}.day-grid-scroll::-webkit-scrollbar-thumb{background:var(--surf2);border-radius:4px;}.day-grid{display:flex;gap:14px;align-items:start;width:max-content;}
+.day-grid-wrap{}.day-grid-nav{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;}.day-grid-nav-btn{background:var(--card);border:1px solid var(--border2);border-radius:var(--rs);padding:4px 10px;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink2);font-family:var(--f);transition:all .13s;}.day-grid-nav-btn:hover{background:var(--surf2);}.day-grid-nav-btn.active{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-bd);}.day-grid-scroll{overflow-x:auto;scroll-behavior:smooth;padding-bottom:8px;-webkit-overflow-scrolling:touch;touch-action:pan-x;cursor:default;}.day-grid-scroll::-webkit-scrollbar{height:5px;}.day-grid-scroll::-webkit-scrollbar-thumb{background:var(--surf2);border-radius:4px;}.day-grid{display:flex;gap:14px;align-items:start;width:max-content;}
 .dc{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.dc.today-col{position:sticky;left:0;z-index:10;box-shadow:2px 0 12px rgba(15,12,8,.10),var(--sh);}
 .dc.drag-bucket-over{border-color:var(--gold);}
 .dc.ov-col{border-left:3px solid var(--red);}
 .dh{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);padding:14px 14px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--border2);background:var(--card);}
@@ -1463,7 +1467,7 @@ function renderDayGrid(act){
     var ck=colKey(o),tasks=tasksForDay(o),isT=o===0;
     var cnt='<span class="dc-cnt">'+tasks.length+'</span>';
     var w='320px';
-    var h='<div class="dc" id="bucket-'+ck+'" style="width:'+w+';flex-shrink:0;"'
+    var h='<div class="dc'+(isT?' today-col':'')+'" id="bucket-'+ck+'" style="width:'+w+';flex-shrink:0;"'
       +' ondragover="bucketDragOver(event,\''+ck+'\')" ondrop="bucketDrop(event,\''+ck+'\')" ondragleave="bucketDragLeave(event)">'
       +'<div class="dh'+(isT?' today':'')+'">'
       +'<span>'+dayLabel(o)+'</span>'+cnt+'</div>';
@@ -1522,12 +1526,13 @@ function renderDayGrid(act){
   var colsHtml='';
   for(var i=plannerViewStart;i<plannerViewStart+plannerDays;i++){colsHtml+=renderDayCol(i);}
   var el=document.getElementById('day-grid');if(el)el.innerHTML=colsHtml;
+  // Scroll via two-finger/trackpad only — no mouse drag (was causing accidental scrolling)
   var scrl=document.getElementById('day-grid-scroll');
-  if(scrl&&!scrl._dragInit){
-    scrl._dragInit=true;var isDown=false,startX,scrollLeft;
-    scrl.addEventListener('mousedown',function(e){if(e.target.closest&&e.target.closest('.chk,.tl-task'))return;isDown=true;startX=e.pageX-scrl.offsetLeft;scrollLeft=scrl.scrollLeft;});
-    document.addEventListener('mouseup',function(){isDown=false;});
-    scrl.addEventListener('mousemove',function(e){if(!isDown)return;e.preventDefault();var x=e.pageX-scrl.offsetLeft;scrl.scrollLeft=scrollLeft-(x-startX);});
+  if(scrl&&!scrl._scrollInit){
+    scrl._scrollInit=true;
+    // Allow horizontal scroll with two-finger swipe on trackpad natively
+    // Intercept single-finger mouse drag and block it
+    scrl.addEventListener('mousedown',function(e){e.preventDefault();},{passive:false});
   }
 }
 
