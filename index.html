@@ -1200,18 +1200,21 @@ function renderDash(){
 
 function quickCheck(id){
   var t=todos.find(function(x){return x.id===id;});if(!t)return;
-  t.done=!t.done;save();
+  t.done=!t.done;
+  // Save locally only — do NOT push to Supabase yet (would write completed=false and race sbMarkCompleted)
+  localStorage.setItem('kb5_todos',JSON.stringify(todos));
   if(t.done){
     document.querySelectorAll('[onclick="quickCheck(\''+id+'\')"]').forEach(function(chk){
       chk.classList.add('done');
-      var item=chk.closest('.dt-item,.tr,.date-task,.tl-task');
+      var item=chk.closest('.dt-item,.tr,.date-task,.tl-task,.mob-tl-task,.mob-unsched-task');
       if(item){
-        var tx=item.querySelector('.dt-txt,.tt');if(tx)tx.classList.add('x');
+        var tx=item.querySelector('.dt-txt,.tt,.mob-task-text');if(tx)tx.classList.add('x');
         setTimeout(function(){
           item.style.transition='opacity .45s,max-height .5s,padding .5s,margin .5s';
           item.style.overflow='hidden';item.style.maxHeight=item.offsetHeight+'px';item.style.opacity='0';
           setTimeout(function(){item.style.maxHeight='0';item.style.padding='0';item.style.margin='0';
             setTimeout(function(){
+              // Mark completed in Supabase FIRST, then remove locally and save
               sbMarkCompleted(id).catch(function(){sbDelTodo(id).catch(function(){});});
               todos=todos.filter(function(x){return x.id!==id;});
               save();renderAll();
@@ -1222,7 +1225,7 @@ function quickCheck(id){
     });
     var a=todos.filter(function(x){return!x.done;});
     var badge=document.getElementById('td-badge');if(badge)badge.textContent=a.length-1;
-  }else{renderAll();}
+  }else{save();renderAll();}
 }
 
 // dashboard drag
