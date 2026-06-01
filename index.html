@@ -844,30 +844,21 @@ function sbH(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-
 function upsertH(){var h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};h['Prefer']='resolution=merge-duplicates,return=minimal';return h;}
 
 function sbUpsertLists(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_lists?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(l,i){return{id:l.id,name:l.name,ord:i};}))});}
-function sbUpsertTodos(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_todos?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(t){return{id:t.id,text:t.text,list_id:t.listId,due:t.due||null,done:t.done,ord:t.ord||0,board_ref:t.boardRef||null,completed:false};}))});}
+function sbUpsertTodos(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_todos?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(t){return{id:t.id,text:t.text,list_id:t.listId,due:t.due||null,done:t.done,ord:t.ord||0,board_ref:t.boardRef||null};}))});}
 // Soft-delete: mark completed=true in Supabase instead of deleting the row
 // This prevents any device from ever resurrecting a completed todo on sync
 function sbMarkCompleted(id){
   _markDeleted(id);
   delete todoTimeMap[id];
   fetch(SB_URL+'/rest/v1/kb_timemap?todo_id=eq.'+id,{method:'DELETE',headers:sbH()}).catch(function(){});
-  // Try soft-delete first (completed=true), fall back to hard delete if column doesn't exist
-  return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'PATCH',headers:Object.assign({},sbH(),{'Content-Type':'application/json'}),body:JSON.stringify({completed:true,completed_at:new Date().toISOString()})})
-    .then(function(r){
-      if(!r.ok){
-        // completed column doesn't exist yet — fall back to hard delete
-        return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'DELETE',headers:sbH()});
-      }
-    })
-    .catch(function(){
-      // Network error — tombstone already set, will be filtered on next sync
-    });
+  return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'DELETE',headers:sbH()});
 }
 function sbUpsertBoard(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_board?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(b){return{id:b.id,type:b.type,name:b.name,phase:b.phase||'',pct:b.pct||0,addr:b.addr||'',lot:b.lot||'',action:b.action||'',last_contact:b.lastContact||null,ord:b.ord||0,notes:b.notes||''};}))});}
 function sbUpsertTimeMap(obj){var rows=Object.keys(obj).map(function(k){return{todo_id:k,time_slot:obj[k]};});if(!rows.length){return fetch(SB_URL+'/rest/v1/kb_timemap',{method:'DELETE',headers:sbH()});}return fetch(SB_URL+'/rest/v1/kb_timemap?on_conflict=todo_id',{method:'POST',headers:upsertH(),body:JSON.stringify(rows)});}
 function sbDelList(id){return fetch(SB_URL+'/rest/v1/kb_lists?id=eq.'+id,{method:'DELETE',headers:sbH()});}
 
-// ── DELETED IDS: persist a tombstone set so syncs never resurrect deleted tasks ──
+// Track todos created this session — these are the only local-only ones we push back on sync
+var _newTodoIds={};
 var _deletedIds=(function(){try{return JSON.parse(localStorage.getItem('kb5_deleted')||'{}');}catch(e){return{};}})();
 function _markDeleted(id){_deletedIds[id]=Date.now();try{localStorage.setItem('kb5_deleted',JSON.stringify(_deletedIds));}catch(e){}}
 // Purge tombstones older than 30 days to keep storage clean
@@ -932,11 +923,7 @@ function pullFromSupabase(isInit){
   var _calTokenBackup=localStorage.getItem('kb_cal_token');
   Promise.all([
     fetch(SB_URL+'/rest/v1/kb_lists?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
-    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc&completed=eq.false',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){
-      if(r.ok)return r.json();
-      // If completed column doesn't exist yet (400), fall back to fetching all rows
-      return fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r2){return r2.ok?r2.json():[];});
-    }),
+    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
     fetch(SB_URL+'/rest/v1/kb_board?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
     fetch(SB_URL+'/rest/v1/kb_timemap?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];})
   ]).then(function(results){
@@ -978,9 +965,13 @@ function pullFromSupabase(isInit){
         }
         return true;
       });
-      // Keep local todos not yet in Supabase (just created offline)
-      var localOnly=todos.filter(function(t){return !remoteIds[t.id]&&!t.done;});
+      // Only keep local todos that were created THIS session (not ones deleted on another device)
+      var localOnly=todos.filter(function(t){
+        return !remoteIds[t.id]&&!t.done&&!_deletedIds[t.id]&&_newTodoIds[t.id];
+      });
       todos=remoteTodos.concat(localOnly);
+      // Clear _newTodoIds for anything Supabase now has — it's confirmed
+      Object.keys(_newTodoIds).forEach(function(k){if(remoteIds[k])delete _newTodoIds[k];});
       // Push any local-only ones up immediately
       if(localOnly.length)sbUpsertTodos(localOnly).catch(function(){});
       changed=true;
@@ -1327,7 +1318,7 @@ function renderTodosByDate(){
   }).join('');
 }
 function toggleJb(id){var b=document.getElementById('jbt_'+id);var c=document.getElementById('cv_'+id);if(!b)return;var o=b.classList.toggle('open');c.classList.toggle('open',o);sessionStorage.setItem('jopen_'+id,o?'1':'0');}
-function addInline(listId){var text=document.getElementById('ain_'+listId).value.trim();if(!text)return;var due=document.getElementById('din_'+listId).value;var lt=todos.filter(function(t){return t.listId===listId;});todos.push({id:uid(),text:text,listId:listId,due:due,done:false,ord:lt.length});document.getElementById('ain_'+listId).value='';save();renderAll();setTimeout(function(){var b=document.getElementById('jbt_'+listId);if(b){b.classList.add('open');var c=document.getElementById('cv_'+listId);if(c)c.classList.add('open');}},30);}
+function addInline(listId){var text=document.getElementById('ain_'+listId).value.trim();if(!text)return;var due=document.getElementById('din_'+listId).value;var lt=todos.filter(function(t){return t.listId===listId;});var nid=uid();_newTodoIds[nid]=true;todos.push({id:nid,text:text,listId:listId,due:due,done:false,ord:lt.length});document.getElementById('ain_'+listId).value='';save();renderAll();setTimeout(function(){var b=document.getElementById('jbt_'+listId);if(b){b.classList.add('open');var c=document.getElementById('cv_'+listId);if(c)c.classList.add('open');}},30);}
 function deleteTodo(id){_markDeleted(id);sbDelTodo(id).catch(function(){});todos=todos.filter(function(t){return t.id!==id;});save();renderAll();}
 function trDragStart(e){tdDragSrc=e.currentTarget;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',e.currentTarget.dataset.id);}
 function trDragOver(e){e.preventDefault();document.querySelectorAll('.tr').forEach(function(r){r.classList.remove('drag-over');});if(tdDragSrc&&e.currentTarget!==tdDragSrc&&e.currentTarget.dataset.list===tdDragSrc.dataset.list)e.currentTarget.classList.add('drag-over');}
@@ -1411,9 +1402,9 @@ function miniTodoCell(boardId){
   return html;
 }
 function miniChkClick(el){var tid=el.getAttribute('data-tid'),bid=el.getAttribute('data-bid');var t=todos.find(function(x){return x.id===tid;});if(!t)return;t.done=!t.done;save();var cell=el.closest('td');if(cell)cell.innerHTML=miniTodoCell(bid);renderTodos();renderDash();}
-function miniAddClick(btn,evt){evt.stopPropagation();var bid=btn.getAttribute('data-bid');var tin=document.getElementById('mti_'+bid);if(!tin||!tin.value.trim())return;var text=tin.value.trim();var b=board.find(function(x){return x.id===bid;});ensurePipelineList();todos.push({id:uid(),text:text+(b?' \u2014 '+b.name:''),listId:PIPELINE_LIST_ID,due:'',done:false,ord:todos.filter(function(t){return t.listId===PIPELINE_LIST_ID;}).length,boardRef:bid});save();var cell=btn.closest('td');if(cell)cell.innerHTML=miniTodoCell(bid);renderTodos();renderDash();}
+function miniAddClick(btn,evt){evt.stopPropagation();var bid=btn.getAttribute('data-bid');var tin=document.getElementById('mti_'+bid);if(!tin||!tin.value.trim())return;var text=tin.value.trim();var b=board.find(function(x){return x.id===bid;});ensurePipelineList();var nid=uid();_newTodoIds[nid]=true;todos.push({id:nid,text:text+(b?' \u2014 '+b.name:''),listId:PIPELINE_LIST_ID,due:'',done:false,ord:todos.filter(function(t){return t.listId===PIPELINE_LIST_ID;}).length,boardRef:bid});save();var cell=btn.closest('td');if(cell)cell.innerHTML=miniTodoCell(bid);renderTodos();renderDash();}
 function bmRenderTodos(boardId){var el=document.getElementById('bm-todo-list');if(!el)return;var items=todos.filter(function(t){return t.boardRef===boardId;});if(!items.length){el.innerHTML='<div style="font-size:12px;color:var(--ink4);padding:2px 0;">No action items yet.</div>';return;}el.innerHTML='<div class="pipeline-todo-label">Action Items</div>'+items.map(function(t){var n=dd(t.due),dc='',dl='';if(t.due){dc=n<0?'ov':n===0?'td':'ok';dl=n<0?Math.abs(n)+'d overdue':n===0?'Today':fd(t.due);}return'<div class="bm-todo-item"><div class="bm-chk'+(t.done?' done':'')+'" onclick="bmToggle(\''+t.id+'\',\''+boardId+'\')"></div><span class="bm-todo-text'+(t.done?' done':'')+'">'+he(t.text)+'</span>'+(dl?'<span class="bm-todo-due '+dc+'">'+dl+'</span>':'')+'<button class="bm-todo-del" onclick="bmDel(\''+t.id+'\',\''+boardId+'\')" title="Delete">&times;</button></div>';}).join('');}
-function bmAddTodo(){var text=document.getElementById('bm-new-task').value.trim();if(!text)return;var due=document.getElementById('bm-new-due').value;var b=board.find(function(x){return x.id===editBoardId;});ensurePipelineList();todos.push({id:uid(),text:text+(b?' \u2014 '+b.name:''),listId:PIPELINE_LIST_ID,due:due,done:false,ord:todos.filter(function(t){return t.listId===PIPELINE_LIST_ID;}).length,boardRef:editBoardId});document.getElementById('bm-new-task').value='';document.getElementById('bm-new-due').value='';save();bmRenderTodos(editBoardId);renderTodos();renderDash();}
+function bmAddTodo(){var text=document.getElementById('bm-new-task').value.trim();if(!text)return;var due=document.getElementById('bm-new-due').value;var b=board.find(function(x){return x.id===editBoardId;});ensurePipelineList();var nid=uid();_newTodoIds[nid]=true;todos.push({id:nid,text:text+(b?' \u2014 '+b.name:''),listId:PIPELINE_LIST_ID,due:due,done:false,ord:todos.filter(function(t){return t.listId===PIPELINE_LIST_ID;}).length,boardRef:editBoardId});document.getElementById('bm-new-task').value='';document.getElementById('bm-new-due').value='';save();bmRenderTodos(editBoardId);renderTodos();renderDash();}
 function bmToggle(tid,bid){var t=todos.find(function(x){return x.id===tid;});if(!t)return;t.done=!t.done;save();bmRenderTodos(bid);renderTodos();renderDash();}
 function bmDel(tid,bid){_markDeleted(tid);sbDelTodo(tid).catch(function(){});todos=todos.filter(function(t){return t.id!==tid;});save();bmRenderTodos(bid);renderTodos();renderDash();}
 
@@ -1524,7 +1515,7 @@ function closeVoiceSheet(){stopListen();document.getElementById('vsh').classList
 function toggleListen(){if(listening)stopListen();else startListen();}
 function startListen(){var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){document.getElementById('vs-ph').style.display='none';var t=document.getElementById('vs-txt');t.style.display='';t.contentEditable='true';t.focus();document.getElementById('vs-sub').textContent='Type your task above';document.getElementById('vs-save').disabled=false;document.getElementById('vs-save').style.opacity='1';return;}recog=new SR();recog.continuous=false;recog.interimResults=true;recog.lang='en-US';recog.onstart=function(){listening=true;document.getElementById('vs-mic').classList.add('active');document.getElementById('vs-mic').textContent='\u23F9';document.getElementById('vs-trans').classList.add('lis');document.getElementById('vs-sub').textContent='Listening\u2026';};recog.onresult=function(e){var i='',f='';for(var j=e.resultIndex;j<e.results.length;j++){var t=e.results[j][0].transcript;if(e.results[j].isFinal)f+=t;else i+=t;}var d=f||i;if(d){vsText=f||vsText;document.getElementById('vs-ph').style.display='none';document.getElementById('vs-txt').style.display='';document.getElementById('vs-txt').textContent=d;}};recog.onend=function(){listening=false;document.getElementById('vs-mic').classList.remove('active');document.getElementById('vs-mic').textContent='\uD83C\uDF99';document.getElementById('vs-trans').classList.remove('lis');if(vsText.trim()){document.getElementById('vs-sub').textContent='Tap mic to re-record, or save';document.getElementById('vs-save').disabled=false;document.getElementById('vs-save').style.opacity='1';}else{document.getElementById('vs-sub').textContent='Tap the mic and speak your task';}};recog.onerror=function(e){listening=false;document.getElementById('vs-mic').classList.remove('active');document.getElementById('vs-mic').textContent='\uD83C\uDF99';document.getElementById('vs-sub').textContent=e.error==='not-allowed'?'Mic access denied':'Could not hear \u2014 try again';};recog.start();}
 function stopListen(){if(recog)try{recog.stop();}catch(e){}listening=false;}
-function saveVoiceTask(){var txtEl=document.getElementById('vs-txt');var text=(txtEl.contentEditable==='true'?txtEl.textContent:vsText).trim();if(!text)return;var listId=document.getElementById('vs-job').value;var lt=todos.filter(function(t){return t.listId===listId;});todos.push({id:uid(),text:text,listId:listId,due:'',done:false,ord:lt.length});save();renderAll();closeVoiceSheet();if('speechSynthesis' in window){var u=new SpeechSynthesisUtterance('Added: '+text);u.rate=1.05;speechSynthesis.speak(u);}}
+function saveVoiceTask(){var txtEl=document.getElementById('vs-txt');var text=(txtEl.contentEditable==='true'?txtEl.textContent:vsText).trim();if(!text)return;var listId=document.getElementById('vs-job').value;var lt=todos.filter(function(t){return t.listId===listId;});var nid=uid();_newTodoIds[nid]=true;todos.push({id:nid,text:text,listId:listId,due:'',done:false,ord:lt.length});save();renderAll();closeVoiceSheet();if('speechSynthesis' in window){var u=new SpeechSynthesisUtterance('Added: '+text);u.rate=1.05;speechSynthesis.speak(u);}}
 
 // ════════════════════════════════════════════
 // MODALS + UTILS
@@ -1816,7 +1807,8 @@ function qaAdd(ck,dayOffset){
   var d=new Date();d.setDate(d.getDate()+dayOffset);
   var due=fmtLD(d);
   var lt=todos.filter(function(t){return t.listId===listId;});
-  todos.push({id:uid(),text:text,listId:listId,due:due,done:false,ord:lt.length});
+  var nid=uid();_newTodoIds[nid]=true;
+  todos.push({id:nid,text:text,listId:listId,due:due,done:false,ord:lt.length});
   textEl.value='';
   save();
   renderDayGrid(todos.filter(function(x){return!x.done;}));
