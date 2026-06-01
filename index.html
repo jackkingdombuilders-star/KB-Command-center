@@ -851,7 +851,17 @@ function sbMarkCompleted(id){
   _markDeleted(id);
   delete todoTimeMap[id];
   fetch(SB_URL+'/rest/v1/kb_timemap?todo_id=eq.'+id,{method:'DELETE',headers:sbH()}).catch(function(){});
-  return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'PATCH',headers:Object.assign({},sbH(),{'Content-Type':'application/json'}),body:JSON.stringify({completed:true,completed_at:new Date().toISOString()})});
+  // Try soft-delete first (completed=true), fall back to hard delete if column doesn't exist
+  return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'PATCH',headers:Object.assign({},sbH(),{'Content-Type':'application/json'}),body:JSON.stringify({completed:true,completed_at:new Date().toISOString()})})
+    .then(function(r){
+      if(!r.ok){
+        // completed column doesn't exist yet — fall back to hard delete
+        return fetch(SB_URL+'/rest/v1/kb_todos?id=eq.'+id,{method:'DELETE',headers:sbH()});
+      }
+    })
+    .catch(function(){
+      // Network error — tombstone already set, will be filtered on next sync
+    });
 }
 function sbUpsertBoard(arr){if(!arr.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/kb_board?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(arr.map(function(b){return{id:b.id,type:b.type,name:b.name,phase:b.phase||'',pct:b.pct||0,addr:b.addr||'',lot:b.lot||'',action:b.action||'',last_contact:b.lastContact||null,ord:b.ord||0,notes:b.notes||''};}))});}
 function sbUpsertTimeMap(obj){var rows=Object.keys(obj).map(function(k){return{todo_id:k,time_slot:obj[k]};});if(!rows.length){return fetch(SB_URL+'/rest/v1/kb_timemap',{method:'DELETE',headers:sbH()});}return fetch(SB_URL+'/rest/v1/kb_timemap?on_conflict=todo_id',{method:'POST',headers:upsertH(),body:JSON.stringify(rows)});}
@@ -922,7 +932,11 @@ function pullFromSupabase(isInit){
   var _calTokenBackup=localStorage.getItem('kb_cal_token');
   Promise.all([
     fetch(SB_URL+'/rest/v1/kb_lists?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
-    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc&completed=eq.false',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
+    fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc&completed=eq.false',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){
+      if(r.ok)return r.json();
+      // If completed column doesn't exist yet (400), fall back to fetching all rows
+      return fetch(SB_URL+'/rest/v1/kb_todos?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r2){return r2.ok?r2.json():[];});
+    }),
     fetch(SB_URL+'/rest/v1/kb_board?select=*&order=ord.asc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];}),
     fetch(SB_URL+'/rest/v1/kb_timemap?select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():[];})
   ]).then(function(results){
