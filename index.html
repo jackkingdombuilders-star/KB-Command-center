@@ -163,6 +163,9 @@ select{appearance:none;cursor:pointer;}
 .gs-pill.hot{background:var(--gold-bg);border-color:var(--gold-bd);color:var(--gold);}
 .gm-day{padding:7px 10px;font-size:11.5px;font-weight:700;border:1.5px solid var(--border2);background:var(--surf);color:var(--ink3);border-radius:var(--rs);cursor:pointer;font-family:var(--f);}
 .gm-day.on{background:var(--gold-bg);border-color:var(--gold);color:var(--gold);}
+.call-tgl{flex-shrink:0;background:transparent;border:none;font-size:14px;line-height:1;cursor:pointer;padding:5px 6px;border-radius:6px;opacity:.22;filter:grayscale(1);font-family:var(--f);-webkit-tap-highlight-color:transparent;}
+.call-tgl:hover{opacity:.65;}
+.call-tgl.on{opacity:1;filter:none;background:var(--gold-bg);border:1px solid var(--gold-bd);}
 .call-grp-lbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin:16px 0 8px;}
 .call-grp-lbl.red{color:var(--red);}
 .call-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:13px 14px;margin-bottom:8px;cursor:pointer;}
@@ -934,6 +937,7 @@ function sbDelList(id){return fetch(SB_URL+'/rest/v1/kb_lists?id=eq.'+id,{method
 // ── PERSONAL GOALS (recurring tasks) + CALL DETECTION ──
 var goals=[],goalLog=[],_goalsReady=false;
 function isCallText(s){return /^(call|phone|ring)\b/i.test((s||'').trim());}
+function toggleCall(id){var t=todos.find(function(x){return x.id===id;});if(!t)return;t.isCall=!t.isCall;save();renderAll();}
 function sbUpsertGoal(g){return fetch(SB_URL+'/rest/v1/kb_goals?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify([{id:g.id,title:g.title,category:g.category||'',days:g.days||'0123456',time_slot:g.timeSlot||'',ord:g.ord||0,active:g.active!==false}])}).then(_okOrThrow);}
 function sbDelGoal(id){fetch(SB_URL+'/rest/v1/kb_goal_log?goal_id=eq.'+id,{method:'DELETE',headers:sbH()}).catch(function(){});return fetch(SB_URL+'/rest/v1/kb_goals?id=eq.'+id,{method:'DELETE',headers:sbH()});}
 function sbUpsertGoalLog(row){return fetch(SB_URL+'/rest/v1/kb_goal_log?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify([row])}).then(_okOrThrow);}
@@ -1411,9 +1415,9 @@ function renderMobToday(){
       out+='<div class="mob-tl-task" id="mobt-'+t.id+'">'
         +'<div class="chk" id="mobchk-'+t.id+'" onclick="mobQuickCheck(\''+t.id+'\')"></div>'
         +'<div class="mob-task-info">'
-        +'<div class="mob-task-text" id="mobtxt-'+t.id+'">'+(t.isCall?'&#128222; ':'')+he(t.text)+'</div>'
+        +'<div class="mob-task-text" id="mobtxt-'+t.id+'">'+he(t.text)+'</div>'
         +(ln?'<div class="mob-task-sub">'+he(ln.name)+'</div>':'')
-        +'</div></div>';
+        +'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+'</div>';
     });
     return out;
   }
@@ -1447,7 +1451,7 @@ function renderMobToday(){
         +'<div class="mob-task-info">'
         +'<div class="mob-task-text" id="mobtxt-'+t.id+'">'+he(t.text)+'</div>'
         +(ln?'<div class="mob-task-sub">'+he(ln.name)+'</div>':'')
-        +'</div></div>';
+        +'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+'</div>';
     });
   }
 
@@ -1609,9 +1613,9 @@ function renderTr(t,listId){
   return '<div class="tr" draggable="true" data-id="'+t.id+'" data-list="'+listId+'">'
     +'<div class="dh2">&#8942;&#8942;</div>'
     +'<div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div>'
-    +'<div class="tb"><div class="tt'+(t.done?' x':'')+'">'+(t.isCall?'&#128222; ':'')+he(t.text)+'</div>'
+    +'<div class="tb"><div class="tt'+(t.done?' x':'')+'">'+he(t.text)+'</div>'
     +(t.due?'<div class="td2 '+dueC(t.due)+'">'+dueL(t.due)+'</div>':'')+'</div>'
-    +'<div class="ta"><button class="edit-btn" onclick="openTaskModal(\''+t.id+'\')">&#9998;</button>'
+    +'<div class="ta">'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+'<button class="edit-btn" onclick="openTaskModal(\''+t.id+'\')">&#9998;</button>'
     +'<button class="del-btn2" onclick="deleteTodo(\''+t.id+'\')">&#10005;</button></div></div>';
 }
 function renderTodosByDate(){
@@ -2058,7 +2062,7 @@ function renderDayGrid(act){
   function fmtFull(h,m){var ap=h<12?'am':'pm';var h12=h===0?12:h>12?h-12:h;return h12+':'+(m<10?'0':'')+m+ap;}
   function flatChip(t,ck){
     var ln=lists.find(function(l){return l.id===t.listId;});
-    var txt=(t.isCall?'&#128222; ':'')+he(t.text.length>38?t.text.slice(0,38)+'...':t.text);
+    var txt=he(t.text.length>38?t.text.slice(0,38)+'...':t.text);
     return '<div class="dt-item" draggable="true" data-id="'+t.id+'" data-bucket="'+ck+'"'
       +' ondragstart="dashDragStart(event,\''+t.id+'\',\''+ck+'\')" ondragend="dashDragEnd(event)"'
       +' ondragover="itemDragOver(event)" ondragleave="itemDragLeave(event)">'
@@ -2067,7 +2071,7 @@ function renderDayGrid(act){
       +'<div style="flex:1;min-width:0;">'
       +'<div class="dt-txt'+(t.done?' x':'')+'">'+txt+'</div>'
       +'<div class="dt-sub '+(dueC(t.due)||'')+'">'+dueL(t.due)+(ln?' &middot; '+he(ln.name):'')+'</div>'
-      +'</div></div>';
+      +'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+'</div>';
   }
   function renderDayCol(o){
     var ck=colKey(o),tasks=tasksForDay(o),isT=o===0;
@@ -2132,7 +2136,7 @@ function renderDayGrid(act){
       var k=hh+':'+mm,out='';
       (calByHalf[k]||[]).forEach(function(ev){var dur=(ev.eh*60+ev.em)-(ev.sh*60+ev.sm),ds=dur>=60?(Math.floor(dur/60)+'h'+(dur%60?dur%60+'m':'')):(dur+'m');out+='<div class="cal-block"><span class="cal-block-time">'+fmtFull(ev.sh,ev.sm)+'&ndash;'+fmtFull(ev.eh,ev.em)+' '+ds+'</span><span class="cal-block-title">'+he(ev.title)+'</span></div>';});
       (goalsByHalf[k]||[]).forEach(function(g){out+=goalChip(g,dstr);});
-      (tasksByHalf[k]||[]).forEach(function(t){var ln=lists.find(function(l){return l.id===t.listId;});out+='<div class="tl-task" draggable="true" data-id="'+t.id+'" data-bucket="'+ck+'" ondragstart="dashDragStart(event,\''+t.id+'\',\''+ck+'\')" ondragend="dashDragEnd(event)" ondragover="itemDragOver(event)" ondragleave="itemDragLeave(event)"><div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div><div style="flex:1;min-width:0;"><div class="dt-txt'+(t.done?' x':'')+'">'+(t.isCall?'&#128222; ':'')+he(t.text.length>34?t.text.slice(0,34)+'...':t.text)+'</div>'+(ln?'<div class="dt-sub">'+he(ln.name)+'</div>':'')+'</div></div>';});
+      (tasksByHalf[k]||[]).forEach(function(t){var ln=lists.find(function(l){return l.id===t.listId;});out+='<div class="tl-task" draggable="true" data-id="'+t.id+'" data-bucket="'+ck+'" ondragstart="dashDragStart(event,\''+t.id+'\',\''+ck+'\')" ondragend="dashDragEnd(event)" ondragover="itemDragOver(event)" ondragleave="itemDragLeave(event)"><div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div><div style="flex:1;min-width:0;"><div class="dt-txt'+(t.done?' x':'')+'">'+he(t.text.length>34?t.text.slice(0,34)+'...':t.text)+'</div>'+(ln?'<div class="dt-sub">'+he(ln.name)+'</div>':'')+'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+'</div>';});
       return out;
     }
     HOURS.forEach(function(hh){
