@@ -1647,7 +1647,7 @@ function renderTr(t,listId){
   return '<div class="tr" draggable="true" data-id="'+t.id+'" data-list="'+listId+'">'
     +'<div class="dh2">&#8942;&#8942;</div>'
     +'<div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div>'
-    +'<div class="tb"><div class="tt'+(t.done?' x':'')+'">'+he(t.text)+'</div>'
+    +'<div class="tb"><div class="tt'+(t.done?' x':'')+'" title="'+he(t.text)+'">'+he(t.text)+'</div>'
     +(t.due?'<div class="td2 '+dueC(t.due)+'">'+dueL(t.due)+'</div>':'')+'</div>'
     +'<div class="ta">'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+snzCtl(t.id)+'<button class="edit-btn" onclick="openTaskModal(\''+t.id+'\')">&#9998;</button>'
     +'<button class="del-btn2" onclick="deleteTodo(\''+t.id+'\')">&#10005;</button></div></div>';
@@ -2103,7 +2103,7 @@ function renderDayGrid(act){
       +'<div class="drag-ghost">&#8942;&#8942;</div>'
       +'<div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div>'
       +'<div style="flex:1;min-width:0;">'
-      +'<div class="dt-txt'+(t.done?' x':'')+'">'+txt+'</div>'
+      +'<div class="dt-txt'+(t.done?' x':'')+'" title="'+he(t.text)+'">'+txt+'</div>'
       +'<div class="dt-sub '+(dueC(t.due)||'')+'">'+dueL(t.due)+(ln?' &middot; '+he(ln.name):'')+'</div>'
       +'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+snzCtl(t.id)+'</div>';
   }
@@ -2130,7 +2130,7 @@ function renderDayGrid(act){
           +'<div class="drag-ghost">&#8942;&#8942;</div>'
           +'<div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div>'
           +'<div style="flex:1;min-width:0;">'
-          +'<div class="dt-txt'+(t.done?' x':'')+'">'+he(t.text.length>34?t.text.slice(0,34)+'...':t.text)
+          +'<div class="dt-txt'+(t.done?' x':'')+'" title="'+he(t.text)+'">'+he(t.text.length>34?t.text.slice(0,34)+'...':t.text)
           +'<span style="font-size:9px;color:var(--red);font-weight:700;margin-left:5px;">'+Math.abs(n)+'d ago</span></div>'
           +(ln?'<div class="dt-sub ov">'+he(ln.name)+'</div>':'')
           +'</div></div>';
@@ -2170,7 +2170,7 @@ function renderDayGrid(act){
       var k=hh+':'+mm,out='';
       (calByHalf[k]||[]).forEach(function(ev){var dur=(ev.eh*60+ev.em)-(ev.sh*60+ev.sm),ds=dur>=60?(Math.floor(dur/60)+'h'+(dur%60?dur%60+'m':'')):(dur+'m');out+='<div class="cal-block"><span class="cal-block-time">'+fmtFull(ev.sh,ev.sm)+'&ndash;'+fmtFull(ev.eh,ev.em)+' '+ds+'</span><span class="cal-block-title">'+he(ev.title)+'</span></div>';});
       (goalsByHalf[k]||[]).forEach(function(g){out+=goalChip(g,dstr);});
-      (tasksByHalf[k]||[]).forEach(function(t){var ln=lists.find(function(l){return l.id===t.listId;});out+='<div class="tl-task" draggable="true" data-id="'+t.id+'" data-bucket="'+ck+'" ondragstart="dashDragStart(event,\''+t.id+'\',\''+ck+'\')" ondragend="dashDragEnd(event)" ondragover="itemDragOver(event)" ondragleave="itemDragLeave(event)"><div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div><div style="flex:1;min-width:0;"><div class="dt-txt'+(t.done?' x':'')+'">'+he(t.text.length>34?t.text.slice(0,34)+'...':t.text)+'</div>'+(ln?'<div class="dt-sub">'+he(ln.name)+'</div>':'')+'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+snzCtl(t.id)+'</div>';});
+      (tasksByHalf[k]||[]).forEach(function(t){var ln=lists.find(function(l){return l.id===t.listId;});out+='<div class="tl-task" draggable="true" data-id="'+t.id+'" data-bucket="'+ck+'" ondragstart="dashDragStart(event,\''+t.id+'\',\''+ck+'\')" ondragend="dashDragEnd(event)" ondragover="itemDragOver(event)" ondragleave="itemDragLeave(event)"><div class="chk'+(t.done?' done':'')+'" onclick="quickCheck(\''+t.id+'\')"></div><div style="flex:1;min-width:0;"><div class="dt-txt'+(t.done?' x':'')+'" title="'+he(t.text)+'">'+he(t.text.length>34?t.text.slice(0,34)+'...':t.text)+'</div>'+(ln?'<div class="dt-sub">'+he(ln.name)+'</div>':'')+'</div>'+'<button class="call-tgl'+(t.isCall?' on':'')+'" onclick="event.stopPropagation();toggleCall(\''+t.id+'\')" title="Mark as phone call">&#128222;</button>'+snzCtl(t.id)+'</div>';});
       return out;
     }
     HOURS.forEach(function(hh){
