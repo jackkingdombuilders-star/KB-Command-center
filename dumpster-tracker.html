@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KM Dumpsters">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FAF7F2">
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;KM Dumpsters&quot;,&quot;short_name&quot;:&quot;KM Dumpsters&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;background_color&quot;:&quot;%23FAF7F2&quot;,&quot;theme_color&quot;:&quot;%23FAF7F2&quot;}">
+<title>Kingdom Materials — Dumpster Tracking</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#8A6418;--gold-lt:#B8923E;--gold-bg:#F5EDD8;--gold-bd:rgba(138,100,24,.25);
+  --ink:#0F0C08;--ink2:#2A2218;--ink3:#524840;--ink4:#9A9088;
+  --surf:#EDE8DC;--surf2:#E0D8C8;--card:#FAF7F2;
+  --border:rgba(15,12,8,.10);--border2:rgba(15,12,8,.18);
+  --sh:0 1px 4px rgba(15,12,8,.09),0 1px 2px rgba(15,12,8,.06);
+  --sh-md:0 6px 24px rgba(15,12,8,.12),0 2px 6px rgba(15,12,8,.07);
+  --red:#9E2218;--red-bg:#FAEBE9;--red-bd:rgba(158,34,24,.22);
+  --green:#1E5E42;--green-bg:#E5F2EC;--green-bd:rgba(30,94,66,.22);
+  --blue:#1A4A7C;--blue-bg:#E6EEF8;--blue-bd:rgba(26,74,124,.22);
+  --amber:#8A3E08;--amber-bg:#FDF0E4;--amber-bd:rgba(138,62,8,.22);
+  --r:8px;--rs:5px;
+  --fh:'Cormorant Garamond',serif;--f:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+@media(max-width:700px){input,select,textarea{font-size:16px!important;}}
+html,body{min-height:100%;background:var(--surf);color:var(--ink);font-family:var(--f);font-size:14.5px;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+.main{max-width:1040px;margin:0 auto;padding:74px 16px 120px;padding-top:calc(74px + env(safe-area-inset-top));}
+@media(max-width:700px){.main{padding:60px 11px calc(84px + env(safe-area-inset-bottom));}}
+
+/* TOPBAR */
+.topbar{background:var(--card);border-bottom:2px solid var(--surf2);padding:0 18px;height:56px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:100;box-shadow:var(--sh);width:100%;padding-top:env(safe-area-inset-top);}
+@media(max-width:700px){.topbar{padding:0 11px;height:50px;padding-top:env(safe-area-inset-top);}}
+.brand{display:flex;align-items:center;gap:9px;margin-right:auto;cursor:pointer;}
+.bi{width:26px;height:26px;background:var(--ink);clip-path:polygon(50% 0%,100% 30%,100% 100%,0 100%,0 30%);position:relative;flex-shrink:0;}
+.bi::after{content:'';position:absolute;inset:5px;background:var(--gold);clip-path:polygon(50% 0%,100% 30%,100% 100%,0 100%,0 30%);}
+.bn{font-family:var(--fh);font-size:17px;font-weight:700;color:var(--ink);letter-spacing:.02em;line-height:1;}
+.bn small{display:block;font-family:var(--f);font-size:9.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink4);margin-top:2px;}
+@media(max-width:700px){.bn small{display:none;}}
+.tb-tabs{display:flex;gap:2px;}
+@media(max-width:700px){.tb-tabs{display:none;}}
+.tb-tab{border:none;background:transparent;font-family:var(--f);font-size:13px;font-weight:600;color:var(--ink3);padding:8px 14px;border-radius:var(--rs);cursor:pointer;}
+.tb-tab.active{background:var(--gold-bg);color:var(--gold);}
+.icon-btn{border:1px solid var(--border2);background:var(--card);color:var(--ink2);width:36px;height:36px;border-radius:var(--rs);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+
+/* SYNC STATUS */
+#sync-status-bar{position:fixed;bottom:calc(74px + env(safe-area-inset-bottom));right:16px;font-size:11px;font-weight:600;color:var(--green);background:var(--card);border:1px solid var(--green-bd);border-radius:20px;padding:5px 13px;box-shadow:var(--sh);opacity:0;transition:opacity .4s;pointer-events:none;z-index:300;}
+@media(min-width:701px){#sync-status-bar{bottom:16px;}}
+
+/* SETUP NOTE */
+#setup-note{display:none;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:var(--rs);padding:11px 15px;font-size:13px;color:var(--red);margin-bottom:16px;line-height:1.5;}
+
+/* SECTIONS */
+.sec{display:none;}
+.sec.active{display:block;}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 2px 16px;}
+.sec-title{font-family:var(--fh);font-size:26px;font-weight:700;color:var(--ink);line-height:1;}
+@media(max-width:700px){.sec-title{font-size:22px;}}
+.sec-sub{font-size:12.5px;color:var(--ink4);margin-top:4px;}
+
+/* BUTTONS */
+.btn{border:1px solid var(--border2);background:var(--card);color:var(--ink);font-family:var(--f);font-size:13.5px;font-weight:600;padding:9px 15px;border-radius:var(--rs);cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:var(--sh);}
+.btn:active{transform:translateY(1px);}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#fff;}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:#fff;}
+.btn.ghost{box-shadow:none;background:transparent;}
+.btn.sm{padding:6px 11px;font-size:12.5px;}
+.btn.danger{color:var(--red);border-color:var(--red-bd);}
+.btn.wide{width:100%;justify-content:center;}
+
+/* STAT ROW */
+.stats{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.stat{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;box-shadow:var(--sh);}
+.stat .n{font-family:var(--fh);font-size:28px;font-weight:700;color:var(--ink);line-height:1;}
+.stat .l{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4);margin-top:5px;}
+.stat.warn .n{color:var(--amber);}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;overflow:hidden;}
+.dcard{padding:15px 16px;}
+.dcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.dcard-job{font-family:var(--fh);font-size:19px;font-weight:700;color:var(--ink);line-height:1.15;}
+.dcard-addr{font-size:12.5px;color:var(--ink3);margin-top:3px;}
+.dcard-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;}
+.chip{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:var(--surf);color:var(--ink3);border:1px solid var(--border);letter-spacing:.02em;}
+.chip.county{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-bd);}
+.chip.clock{background:var(--green-bg);color:var(--green);border-color:var(--green-bd);}
+.chip.clock.over{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd);}
+.dcard-actions{display:flex;gap:8px;margin-top:13px;padding-top:13px;border-top:1px solid var(--border);}
+.dcard-actions .btn{flex:1;justify-content:center;}
+
+/* LIST ROWS */
+.row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);}
+.row:last-child{border-bottom:none;}
+.row-main{flex:1;min-width:0;}
+.row-t{font-size:14.5px;font-weight:600;color:var(--ink);}
+.row-s{font-size:12px;color:var(--ink4);margin-top:2px;}
+.row-r{text-align:right;font-variant-numeric:tabular-nums;}
+.row-amt{font-family:var(--fh);font-size:18px;font-weight:700;color:var(--ink);}
+.empty{text-align:center;color:var(--ink4);font-size:13.5px;padding:40px 20px;}
+
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;}
+.badge.paid{background:var(--green-bg);color:var(--green);}
+.badge.unpaid{background:var(--amber-bg);color:var(--amber);}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(15,12,8,.42);backdrop-filter:blur(2px);z-index:400;display:none;align-items:flex-end;justify-content:center;}
+.overlay.open{display:flex;}
+@media(min-width:701px){.overlay{align-items:center;}}
+.modal{background:var(--card);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:16px 16px 0 0;box-shadow:var(--sh-md);padding-bottom:env(safe-area-inset-bottom);}
+@media(min-width:701px){.modal{border-radius:14px;}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:2;}
+.modal-title{font-family:var(--fh);font-size:21px;font-weight:700;}
+.modal-body{padding:18px 20px 24px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink4);margin-bottom:6px;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--border2);border-radius:var(--rs);padding:10px 12px;font-family:var(--f);font-size:14.5px;color:var(--ink);background:#fff;}
+.field textarea{min-height:60px;resize:vertical;}
+.field-row{display:flex;gap:12px;}
+.field-row .field{flex:1;}
+.seg{display:flex;gap:6px;margin-bottom:16px;}
+.seg button{flex:1;border:1px solid var(--border2);background:var(--card);padding:9px;border-radius:var(--rs);font-family:var(--f);font-weight:600;font-size:13px;color:var(--ink3);cursor:pointer;}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+/* BILL PREVIEW */
+.preview{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin:4px 0 16px;}
+.pv-line{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0;color:var(--ink2);}
+.pv-line .v{font-variant-numeric:tabular-nums;font-weight:600;}
+.pv-line.muted{color:var(--ink4);font-size:12px;}
+.pv-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:9px;padding-top:11px;border-top:2px solid var(--border2);}
+.pv-total .l{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);}
+.pv-total .v{font-family:var(--fh);font-size:26px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+
+/* MOBILE NAV */
+.mob-nav{display:none;}
+@media(max-width:700px){
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1.5px solid var(--surf2);z-index:150;box-shadow:0 -2px 16px rgba(15,12,8,.10);padding-bottom:env(safe-area-inset-bottom);}
+  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0 10px;font-size:10px;font-weight:600;color:var(--ink4);cursor:pointer;gap:3px;background:transparent;border:none;font-family:var(--f);min-height:54px;}
+  .mob-tab.active{color:var(--gold);}
+  .mob-tab-icon{font-size:21px;line-height:1;}
+}
+
+/* ============ INVOICE SHEET (client-facing, print) ============ */
+#invoice-print{display:none;}
+.inv-wrap{position:fixed;inset:0;background:#e9ebee;z-index:500;overflow-y:auto;display:none;}
+.inv-wrap.open{display:block;}
+.inv-bar{max-width:816px;margin:0 auto;padding:12px 8px;display:flex;justify-content:space-between;gap:8px;}
+.inv-sheet{background:#fff;max-width:816px;margin:0 auto 40px;padding:52px 54px 38px;box-shadow:0 1px 3px rgba(0,0,0,.14);color:#171a1f;font-family:var(--f);}
+.inv-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #171a1f;padding-bottom:16px;}
+.inv-name{font-size:20px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;line-height:1.05;}
+.inv-sub{font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:#4a515b;margin-top:3px;}
+.inv-contact{margin-top:11px;font-size:12px;color:#4a515b;line-height:1.55;}
+.inv-doc{text-align:right;}
+.inv-word{font-size:25px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
+.inv-num{display:inline-block;margin-top:7px;background:#c25e0a;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.05em;padding:4px 12px;border-radius:2px;}
+.inv-meta{margin-top:11px;font-size:12px;color:#4a515b;}
+.inv-meta b{color:#171a1f;font-weight:600;}
+.inv-blocks{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;}
+.inv-cap{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#c25e0a;margin-bottom:6px;}
+.inv-body{font-size:12.5px;line-height:1.5;}
+.inv-body .b{font-weight:700;}
+.inv-job{background:#f5f6f8;padding:13px 15px;border-radius:3px;align-self:start;}
+.inv-kv{display:flex;justify-content:space-between;gap:12px;padding:2px 0;font-size:12px;}
+.inv-kv .k{color:#4a515b;}
+.inv-kv .v{font-weight:600;text-align:right;}
+.inv-period{display:grid;grid-template-columns:repeat(4,1fr);margin-top:22px;border:1px solid #d7dae0;border-radius:3px;overflow:hidden;}
+.inv-cell{padding:10px 13px;border-right:1px solid #d7dae0;}
+.inv-cell:last-child{border-right:none;}
+.inv-cell .lab{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4a515b;}
+.inv-cell .val{font-size:14px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums;}
+table.inv-tbl{width:100%;border-collapse:collapse;margin-top:24px;}
+.inv-tbl thead th{font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#4a515b;text-align:left;padding:0 0 8px;border-bottom:2px solid #171a1f;}
+.inv-tbl thead th.r{text-align:right;}
+.inv-tbl tbody td{padding:11px 0;border-bottom:1px solid #d7dae0;vertical-align:top;font-size:13px;}
+.inv-tbl td.r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.inv-desc{font-weight:600;}
+.inv-subd{color:#4a515b;font-size:11.5px;margin-top:3px;}
+.inv-foot{display:flex;justify-content:flex-end;margin-top:16px;}
+.inv-totals{width:290px;}
+.inv-trow{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;}
+.inv-trow .lab{color:#4a515b;}
+.inv-trow .amt{font-variant-numeric:tabular-nums;font-weight:600;}
+.inv-grand{margin-top:6px;border-top:2px solid #171a1f;padding-top:11px;display:flex;justify-content:space-between;align-items:baseline;}
+.inv-grand .lab{font-size:11.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;}
+.inv-grand .amt{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;}
+.inv-remit{margin-top:34px;border-top:1px solid #d7dae0;padding-top:15px;display:flex;justify-content:space-between;gap:24px;font-size:11.5px;color:#4a515b;}
+.inv-remit .cap{font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#171a1f;margin-bottom:4px;}
+.inv-thanks{margin-top:20px;text-align:center;font-size:11.5px;letter-spacing:.05em;color:#4a515b;}
+
+@media print{
+  body>*{visibility:hidden;}
+  #invoice-print{display:block!important;}
+  #invoice-print,#invoice-print *{visibility:visible;}
+  #invoice-print{position:absolute;left:0;top:0;width:100%;}
+  #invoice-print .inv-bar{display:none;}
+  #invoice-print .inv-sheet{box-shadow:none;margin:0;max-width:none;padding:.4in .5in;}
+  @page{size:letter;margin:.4in;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand" onclick="switchTab('active')">
+    <div class="bi"></div>
+    <div class="bn">Kingdom Materials<small>Dumpster Tracking</small></div>
+  </div>
+  <div class="tb-tabs">
+    <button class="tb-tab active" data-tab="active" onclick="switchTab('active')">Active</button>
+    <button class="tb-tab" data-tab="jobs" onclick="switchTab('jobs')">Jobs / POs</button>
+    <button class="tb-tab" data-tab="invoices" onclick="switchTab('invoices')">Invoices</button>
+    <button class="tb-tab" data-tab="rates" onclick="switchTab('rates')">Rates</button>
+  </div>
+  <button class="icon-btn" title="Sync" onclick="pullFromSupabase(false)">&#8635;</button>
+  <button class="icon-btn" title="Settings" onclick="openSettings()">&#9881;</button>
+</div>
+
+<div class="main">
+  <div id="setup-note">Dumpster tables not found in Supabase yet — run <b>dr_setup.sql</b> once in the SQL editor, then hit Sync.</div>
+
+  <!-- ACTIVE -->
+  <section class="sec active" id="sec-active">
+    <div class="sec-head">
+      <div><div class="sec-title">Active Dumpsters</div><div class="sec-sub" id="active-sub"></div></div>
+      <button class="btn primary" onclick="openNewDumpster()">+ New Dumpster</button>
+    </div>
+    <div class="stats" id="active-stats"></div>
+    <div id="active-list"></div>
+  </section>
+
+  <!-- JOBS -->
+  <section class="sec" id="sec-jobs">
+    <div class="sec-head">
+      <div><div class="sec-title">Jobs / POs</div><div class="sec-sub">Purchase orders and job sites</div></div>
+      <button class="btn primary" onclick="openPO()">+ New PO</button>
+    </div>
+    <div id="jobs-list"></div>
+  </section>
+
+  <!-- INVOICES -->
+  <section class="sec" id="sec-invoices">
+    <div class="sec-head">
+      <div><div class="sec-title">Invoices</div><div class="sec-sub" id="inv-sub"></div></div>
+    </div>
+    <div class="card" id="invoices-list"></div>
+  </section>
+
+  <!-- RATES -->
+  <section class="sec" id="sec-rates">
+    <div class="sec-head">
+      <div><div class="sec-title">Rates by County</div><div class="sec-sub">Each county is its own rate card</div></div>
+      <button class="btn primary" onclick="openCounty()">+ Add County</button>
+    </div>
+    <div id="rates-list"></div>
+  </section>
+</div>
+
+<!-- MOBILE NAV -->
+<div class="mob-nav">
+  <button class="mob-tab active" data-tab="active" onclick="switchTab('active')"><span class="mob-tab-icon">&#128666;</span>Active</button>
+  <button class="mob-tab" data-tab="jobs" onclick="switchTab('jobs')"><span class="mob-tab-icon">&#128203;</span>Jobs</button>
+  <button class="mob-tab" data-tab="invoices" onclick="switchTab('invoices')"><span class="mob-tab-icon">&#129534;</span>Invoices</button>
+  <button class="mob-tab" data-tab="rates" onclick="switchTab('rates')"><span class="mob-tab-icon">&#128176;</span>Rates</button>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="modal-title"></div><button class="icon-btn" onclick="closeModal()">&times;</button></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- INVOICE VIEW -->
+<div class="inv-wrap" id="invoice-print">
+  <div class="inv-bar">
+    <button class="btn ghost" onclick="closeInvoice()">&larr; Back</button>
+    <button class="btn dark" onclick="window.print()">Save as PDF / Print</button>
+  </div>
+  <div id="inv-sheet-mount"></div>
+</div>
+
+<div id="sync-status-bar"></div>
+
+<script>
+// ============ CONFIG (same project as the Command Center) ============
+var SB_URL='https://zrrxgrxpokgyxvmckqzh.supabase.co';
+var SB_KEY='sb_publishable_MMzPWwUPFrOCeqFkgbZkVA_mPBntppz';
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function he(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function money(n){n=Math.round((+n||0)*100)/100;return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function num(n,d){return (Math.round((+n||0)*Math.pow(10,d||0))/Math.pow(10,d||0)).toLocaleString('en-US');}
+function pad2(n){return String(n).padStart(2,'0');}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function parseD(s){if(!s)return null;var p=String(s).split('-');return new Date(+p[0],(+p[1]||1)-1,+p[2]||1);}
+function fmtNice(s){var d=parseD(s);if(!d)return '\u2014';return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function daysInc(a,b){var d1=parseD(a),d2=parseD(b);if(!d1||!d2)return 0;var n=Math.floor((d2-d1)/86400000)+1;return n<1?1:n;}
+
+// ============ STATE ============
+var counties=[], pos=[], cycles=[], invoices=[];
+var company={name:'Kingdom Materials',subtitle:'Division of Kingdom Builders by LMSW',addr1:'110 West 1st Ave Suite E',addr2:'Easley, SC 29640',phone:'(864) 326-4181',email:'',payee:'Kingdom Material by LMSW',terms:'Net 30',dumpsterSize:'20 yd'};
+
+function seed(){
+  if(!counties.length){
+    counties=[{id:'pickens',name:'Pickens County, SC',base_price:400,included_days:10,included_lb:4000,overage_per_ton:50,day_rate:10,fuel:19,ord:0}];
+  }
+}
+function countyById(id){return counties.find(function(c){return c.id===id;})||counties[0]||null;}
+function openCycleForPO(poId){return cycles.find(function(c){return c.po_id===poId&&c.status==='open';});}
+
+// ============ RATE ENGINE ============
+function computeBill(county,delivered,pickedUp,weightLb){
+  county=county||{base_price:0,included_days:10,included_lb:4000,overage_per_ton:0,day_rate:0,fuel:0};
+  var days=daysInc(delivered,pickedUp);
+  var extraDays=Math.max(0,days-(county.included_days||0));
+  var extraDaysAmt=extraDays*(county.day_rate||0);
+  var overLb=Math.max(0,(+weightLb||0)-(county.included_lb||0));
+  var overTon=overLb/2000;
+  var overAmt=overTon*(county.overage_per_ton||0);
+  var base=+county.base_price||0;
+  var fuel=+county.fuel||0;
+  var subtotal=base+extraDaysAmt+overAmt+fuel;
+  return {days:days,extraDays:extraDays,extraDaysAmt:extraDaysAmt,overLb:overLb,overTon:overTon,
+    overRate:county.overage_per_ton||0,overAmt:overAmt,base:base,fuel:fuel,allowanceLb:county.included_lb||0,
+    includedDays:county.included_days||0,dayRate:county.day_rate||0,subtotal:subtotal,tax:0,total:subtotal};
+}
+function nextInvoiceNo(){var mx=1000;invoices.forEach(function(i){if((+i.invoice_no||0)>mx)mx=+i.invoice_no;});return mx+1;}
+
+// ============ SUPABASE SYNC (ported from Command Center) ============
+function sbH(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};}
+function upsertH(){var h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};h['Prefer']='resolution=merge-duplicates,return=minimal';return h;}
+function _okOrThrow(r){if(!r.ok)throw new Error('write failed '+r.status);return r;}
+
+// row mappers (local -> supabase shape)
+function mCounty(c){return{id:c.id,name:c.name,base_price:+c.base_price||0,included_days:+c.included_days||0,included_lb:+c.included_lb||0,overage_per_ton:+c.overage_per_ton||0,day_rate:+c.day_rate||0,fuel:+c.fuel||0,ord:c.ord||0};}
+function mPO(p){return{id:p.id,po_number:p.po_number||'',job_name:p.job_name||'',job_addr:p.job_addr||'',client_name:p.client_name||'',client_addr:p.client_addr||'',client_email:p.client_email||'',county_id:p.county_id||null,status:p.status||'active',notes:p.notes||'',created:p.created||null,ord:p.ord||0};}
+function mCycle(c){return{id:c.id,po_id:c.po_id,cycle_no:c.cycle_no||1,delivered:c.delivered||null,closed:c.closed||null,status:c.status||'open',close_type:c.close_type||null,weight_lb:(c.weight_lb==null?null:+c.weight_lb),ticket:c.ticket||'',invoice_id:c.invoice_id||null,ord:c.ord||0};}
+function mInv(i){return{id:i.id,invoice_no:+i.invoice_no||0,po_id:i.po_id||null,cycle_id:i.cycle_id||null,date:i.date||null,data:i.data||{},total:+i.total||0,status:i.status||'unpaid',ord:i.ord||0};}
+
+var COLL={
+  counties:{arr:function(){return counties;},set:function(a){counties=a;},table:'dr_counties',map:mCounty,fromRemote:function(r){return{id:r.id,name:r.name,base_price:+r.base_price,included_days:+r.included_days,included_lb:+r.included_lb,overage_per_ton:+r.overage_per_ton,day_rate:+r.day_rate,fuel:+r.fuel,ord:r.ord||0};}},
+  pos:{arr:function(){return pos;},set:function(a){pos=a;},table:'dr_pos',map:mPO,fromRemote:function(r){return{id:r.id,po_number:r.po_number||'',job_name:r.job_name||'',job_addr:r.job_addr||'',client_name:r.client_name||'',client_addr:r.client_addr||'',client_email:r.client_email||'',county_id:r.county_id||'',status:r.status||'active',notes:r.notes||'',created:r.created||'',ord:r.ord||0};}},
+  cycles:{arr:function(){return cycles;},set:function(a){cycles=a;},table:'dr_cycles',map:mCycle,fromRemote:function(r){return{id:r.id,po_id:r.po_id,cycle_no:r.cycle_no||1,delivered:r.delivered||'',closed:r.closed||'',status:r.status||'open',close_type:r.close_type||'',weight_lb:(r.weight_lb==null?null:+r.weight_lb),ticket:r.ticket||'',invoice_id:r.invoice_id||'',ord:r.ord||0};}},
+  invoices:{arr:function(){return invoices;},set:function(a){invoices=a;},table:'dr_invoices',map:mInv,fromRemote:function(r){return{id:r.id,invoice_no:+r.invoice_no||0,po_id:r.po_id||'',cycle_id:r.cycle_id||'',date:r.date||'',data:r.data||{},total:+r.total||0,status:r.status||'unpaid',ord:r.ord||0};}}
+};
+var COLL_KEYS=['counties','pos','cycles','invoices'];
+
+var _hasPulledOk=false;      // gate: no writes until one successful pull this session
+var _pendingPush=false;
+var _syncInterval=null;
+var _snap={};                // last confirmed remote state, per collection, by id
+var _dirty={};               // ids with unconfirmed local edits, per collection
+var _new={};                 // ids created THIS session (the only local-only rows we push back)
+COLL_KEYS.forEach(function(k){_snap[k]={};_dirty[k]={};});
+var _deleted=(function(){try{return JSON.parse(localStorage.getItem('dr_deleted')||'{}');}catch(e){return{};}})();
+function _markDeleted(id){_deleted[id]=Date.now();try{localStorage.setItem('dr_deleted',JSON.stringify(_deleted));}catch(e){}}
+(function(){var cut=Date.now()-30*864e5,ch=false;Object.keys(_deleted).forEach(function(k){if(_deleted[k]<cut){delete _deleted[k];ch=true;}});if(ch)try{localStorage.setItem('dr_deleted',JSON.stringify(_deleted));}catch(e){}})();
+
+function _rowStr(k,r){return JSON.stringify(COLL[k].map(r));}
+function _rebuildSnap(){
+  COLL_KEYS.forEach(function(k){
+    _snap[k]={};
+    COLL[k].arr().forEach(function(r){if(_dirty[k][r.id])return;_snap[k][r.id]=_rowStr(k,r);});
+  });
+}
+function sbUpsert(table,rows){if(!rows.length)return Promise.resolve();return fetch(SB_URL+'/rest/v1/'+table+'?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify(rows)}).then(_okOrThrow);}
+function sbDelete(table,id){return fetch(SB_URL+'/rest/v1/'+table+'?id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:sbH()});}
+function sbUpsertSettings(){return fetch(SB_URL+'/rest/v1/dr_settings?on_conflict=id',{method:'POST',headers:upsertH(),body:JSON.stringify([{id:'company',data:company}])}).then(_okOrThrow);}
+
+function saveLocal(){
+  try{
+    localStorage.setItem('dr_counties',JSON.stringify(counties));
+    localStorage.setItem('dr_pos',JSON.stringify(pos));
+    localStorage.setItem('dr_cycles',JSON.stringify(cycles));
+    localStorage.setItem('dr_invoices',JSON.stringify(invoices));
+    localStorage.setItem('dr_company',JSON.stringify(company));
+  }catch(e){}
+}
+function save(){
+  saveLocal();
+  if(!_hasPulledOk){_pendingPush=true;showSync('\u23F3 Connecting \u2014 saved locally','var(--amber)');return;}
+  _pushDiff();
+}
+function _pushDiff(){
+  var jobs=[];
+  COLL_KEYS.forEach(function(k){
+    var changed=[];
+    COLL[k].arr().forEach(function(r){if(_snap[k][r.id]!==_rowStr(k,r)){changed.push(r);}});
+    if(changed.length){
+      changed.forEach(function(r){_dirty[k][r.id]=true;});
+      var payload=changed.map(function(r){return COLL[k].map(r);});
+      jobs.push(sbUpsert(COLL[k].table,payload).then(function(){
+        changed.forEach(function(r){_snap[k][r.id]=_rowStr(k,r);delete _dirty[k][r.id];});
+      }));
+    }
+  });
+  if(!jobs.length){showSync('\u2714 Saved');return;}
+  Promise.all(jobs).then(function(){showSync('\u2714 Saved');}).catch(function(){_pendingPush=true;showSync('\u26a0 Saved locally \u2014 will sync when online','var(--amber)');});
+}
+function saveSettings(){saveLocal();if(!_hasPulledOk){_pendingPush=true;return;}sbUpsertSettings().catch(function(){_pendingPush=true;});}
+
+function delRow(k,id){
+  _markDeleted(id);
+  COLL[k].set(COLL[k].arr().filter(function(r){return r.id!==id;}));
+  delete _snap[k][id];delete _dirty[k][id];delete _new[id];
+  saveLocal();
+  if(_hasPulledOk)sbDelete(COLL[k].table,id).catch(function(){});
+}
+
+function load(){
+  try{
+    var c=localStorage.getItem('dr_counties'),p=localStorage.getItem('dr_pos'),cy=localStorage.getItem('dr_cycles'),iv=localStorage.getItem('dr_invoices'),co=localStorage.getItem('dr_company');
+    if(c)counties=JSON.parse(c);
+    if(p)pos=JSON.parse(p);
+    if(cy)cycles=JSON.parse(cy);
+    if(iv)invoices=JSON.parse(iv);
+    if(co)company=Object.assign(company,JSON.parse(co));
+  }catch(e){}
+  seed();
+  renderAll();
+  pullFromSupabase(true);
+  if(_syncInterval)clearInterval(_syncInterval);
+  _syncInterval=setInterval(function(){pullFromSupabase(false);},15*60*1000);
+}
+
+function pullFromSupabase(isInit){
+  function j(r){if(!r.ok)throw new Error('pull failed '+r.status);return r.json();}
+  var reqs=COLL_KEYS.map(function(k){
+    var order=(k==='invoices')?'invoice_no.desc':'ord.asc';
+    return fetch(SB_URL+'/rest/v1/'+COLL[k].table+'?select=*&order='+order,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(j);
+  });
+  reqs.push(fetch(SB_URL+'/rest/v1/dr_settings?id=eq.company&select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}));
+
+  Promise.all(reqs).then(function(res){
+    document.getElementById('setup-note').style.display='none';
+    // settings
+    var sset=res[COLL_KEYS.length];
+    if(Array.isArray(sset)&&sset.length&&sset[0].data){company=Object.assign(company,sset[0].data);}
+    else if(_hasPulledOk===false){ sbUpsertSettings().catch(function(){}); }
+
+    COLL_KEYS.forEach(function(k,idx){
+      var remote=res[idx];
+      if(!Array.isArray(remote))return;
+      if(remote.length){
+        var remoteIds={},localById={};
+        COLL[k].arr().forEach(function(r){localById[r.id]=r;});
+        var merged=remote.map(function(rr){
+          remoteIds[rr.id]=true;
+          if(_dirty[k][rr.id]&&localById[rr.id])return localById[rr.id]; // unconfirmed local edit wins
+          return COLL[k].fromRemote(rr);
+        }).filter(function(r){
+          if(_deleted[r.id]){sbDelete(COLL[k].table,r.id).catch(function(){});return false;}
+          return true;
+        });
+        var localOnly=COLL[k].arr().filter(function(r){return !remoteIds[r.id]&&!_deleted[r.id]&&_new[r.id];});
+        COLL[k].set(merged.concat(localOnly));
+        Object.keys(_new).forEach(function(id){if(remoteIds[id])delete _new[id];});
+        if(localOnly.length)sbUpsert(COLL[k].table,localOnly.map(function(r){return COLL[k].map(r);})).catch(function(){_pendingPush=true;});
+      } else if(COLL[k].arr().length){
+        // confirmed empty remote but we have local -> push local up
+        sbUpsert(COLL[k].table,COLL[k].arr().map(function(r){return COLL[k].map(r);})).catch(function(){_pendingPush=true;});
+      }
+    });
+
+    if(!counties.length){seed();}
+    _hasPulledOk=true;
+    _rebuildSnap();
+    saveLocal();
+    renderAll();
+    if(!isInit)showSync('\u2714 Synced '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+    if(_pendingPush){_pendingPush=false;_pushDiff();saveSettings();}
+  }).catch(function(err){
+    // network error / tables missing: keep local, DO NOT push
+    if(!_hasPulledOk){document.getElementById('setup-note').style.display='block';}
+    if(!isInit)showSync('\u26a0 Sync failed \u2014 will retry','var(--amber)');
+  });
+}
+function showSync(msg,color){var el=document.getElementById('sync-status-bar');if(!el)return;el.textContent=msg;el.style.color=color||'var(--green)';el.style.opacity='1';clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='0';},3200);}
+
+// ============ NAV ============
+function switchTab(name){
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('active');});
+  var el=document.getElementById('sec-'+name);if(el)el.classList.add('active');
+  document.querySelectorAll('.tb-tab,.mob-tab').forEach(function(t){t.classList.toggle('active',t.getAttribute('data-tab')===name);});
+  window.scrollTo(0,0);
+}
+
+// ============ MODAL ============
+function openModal(title,html){document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').innerHTML=html;document.getElementById('modal-overlay').classList.add('open');}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+
+// ============ RENDER ============
+function renderAll(){renderActive();renderJobs();renderInvoices();renderRates();}
+
+function renderActive(){
+  var open=cycles.filter(function(c){return c.status==='open';});
+  var over=0;
+  var list=document.getElementById('active-list');
+  document.getElementById('active-sub').textContent=open.length?(open.length+' dumpster'+(open.length>1?'s':'')+' on site'):'';
+  if(!open.length){list.innerHTML='<div class="card"><div class="empty">No dumpsters on site.<br>Tap <b>+ New Dumpster</b> to start a rental.</div></div>';}
+  else{
+    var html='';
+    open.sort(function(a,b){return (parseD(a.delivered)||0)-(parseD(b.delivered)||0);});
+    open.forEach(function(cy){
+      var p=pos.find(function(x){return x.id===cy.po_id;})||{};
+      var ct=countyById(p.county_id);
+      var days=daysInc(cy.delivered,todayStr());
+      var inc=ct?ct.included_days:10;
+      var isOver=days>inc;if(isOver)over++;
+      var clockTxt=isOver?('Day '+days+' \u00b7 '+(days-inc)+' extra day'+((days-inc)>1?'s':'')):('Day '+days+' of '+inc);
+      html+='<div class="card"><div class="dcard">'
+        +'<div class="dcard-top"><div><div class="dcard-job">'+he(p.job_name||'(no job name)')+'</div><div class="dcard-addr">'+he(p.job_addr||'')+'</div></div>'
+        +'<button class="btn ghost sm" onclick="openPO(\''+p.id+'\')">Edit</button></div>'
+        +'<div class="dcard-meta">'
+        +'<span class="chip county">'+he(ct?ct.name:'No county')+'</span>'
+        +'<span class="chip">'+he(company.dumpsterSize)+'</span>'
+        +'<span class="chip">Delivered '+fmtNice(cy.delivered)+'</span>'
+        +'<span class="chip clock'+(isOver?' over':'')+'">'+clockTxt+'</span>'
+        +(p.po_number?'<span class="chip">PO '+he(p.po_number)+'</span>':'')
+        +'</div>'
+        +'<div class="dcard-actions">'
+        +'<button class="btn" onclick="openBill(\''+cy.id+'\',\'changeout\')">Change Out</button>'
+        +'<button class="btn dark" onclick="openBill(\''+cy.id+'\',\'final\')">Final Pickup</button>'
+        +'</div></div></div>';
+    });
+    list.innerHTML=html;
+  }
+  document.getElementById('active-stats').innerHTML=
+    '<div class="stat"><div class="n">'+open.length+'</div><div class="l">On Site</div></div>'
+    +'<div class="stat'+(over?' warn':'')+'"><div class="n">'+over+'</div><div class="l">Past 10 Days</div></div>'
+    +'<div class="stat"><div class="n">'+invoices.filter(function(i){return i.status!=='paid';}).length+'</div><div class="l">Unpaid</div></div>';
+}
+
+function renderJobs(){
+  var el=document.getElementById('jobs-list');
+  var act=pos.filter(function(p){return p.status!=='archived';});
+  if(!act.length){el.innerHTML='<div class="card"><div class="empty">No jobs yet.</div></div>';return;}
+  var html='<div class="card">';
+  act.forEach(function(p){
+    var oc=openCycleForPO(p.id);
+    var st=oc?'On site':'Idle';
+    var ct=countyById(p.county_id);
+    html+='<div class="row"><div class="row-main"><div class="row-t">'+he(p.job_name||'(no name)')+(p.po_number?' <span style="color:var(--ink4);font-weight:500">\u00b7 PO '+he(p.po_number)+'</span>':'')+'</div>'
+      +'<div class="row-s">'+he(p.job_addr||'')+(ct?' \u00b7 '+he(ct.name):'')+'</div></div>'
+      +'<span class="chip'+(oc?' clock':'')+'">'+st+'</span>'
+      +'<button class="btn ghost sm" onclick="openPO(\''+p.id+'\')">Edit</button></div>';
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function renderInvoices(){
+  var el=document.getElementById('invoices-list');
+  document.getElementById('inv-sub').textContent=invoices.length?(invoices.length+' invoice'+(invoices.length>1?'s':'')+' \u00b7 next #'+nextInvoiceNo()):'Next invoice #'+nextInvoiceNo();
+  if(!invoices.length){el.innerHTML='<div class="empty">No invoices yet. Change-out or Final Pickup a dumpster to bill.</div>';return;}
+  var sorted=invoices.slice().sort(function(a,b){return (b.invoice_no||0)-(a.invoice_no||0);});
+  var html='';
+  sorted.forEach(function(i){
+    var d=i.data||{};
+    html+='<div class="row"><div class="row-main"><div class="row-t">#'+i.invoice_no+' \u00b7 '+he(d.job&&d.job.name||'')+'</div>'
+      +'<div class="row-s">'+fmtNice(i.date)+' \u00b7 '+he((d.job&&d.job.county)||'')+'</div></div>'
+      +'<span class="badge '+(i.status==='paid'?'paid':'unpaid')+'" onclick="togglePaid(\''+i.id+'\')" style="cursor:pointer">'+(i.status==='paid'?'Paid':'Unpaid')+'</span>'
+      +'<div class="row-r"><div class="row-amt">'+money(i.total)+'</div></div>'
+      +'<button class="btn ghost sm" onclick="viewInvoice(\''+i.id+'\')">View</button></div>';
+  });
+  el.innerHTML=html;
+}
+function togglePaid(id){var i=invoices.find(function(x){return x.id===id;});if(!i)return;i.status=(i.status==='paid')?'unpaid':'paid';save();renderInvoices();renderActive();}
+
+function renderRates(){
+  var el=document.getElementById('rates-list');
+  if(!counties.length){el.innerHTML='<div class="card"><div class="empty">No rate cards.</div></div>';return;}
+  var html='';
+  counties.forEach(function(c){
+    html+='<div class="card"><div class="dcard">'
+      +'<div class="dcard-top"><div class="dcard-job" style="font-size:17px">'+he(c.name)+'</div>'
+      +'<button class="btn ghost sm" onclick="openCounty(\''+c.id+'\')">Edit</button></div>'
+      +'<div class="dcard-meta">'
+      +'<span class="chip">Base '+money(c.base_price)+'</span>'
+      +'<span class="chip">'+num(c.included_days)+' days incl.</span>'
+      +'<span class="chip">'+num(c.included_lb)+' lb incl.</span>'
+      +'<span class="chip county">'+money(c.overage_per_ton)+'/ton over</span>'
+      +'<span class="chip">'+money(c.day_rate)+'/day after</span>'
+      +'<span class="chip">'+money(c.fuel)+' fuel</span>'
+      +'</div></div></div>';
+  });
+  el.innerHTML=html;
+}
+
+// ============ NEW DUMPSTER ============
+function openNewDumpster(){
+  if(!counties.length){seed();}
+  var idle=pos.filter(function(p){return p.status!=='archived'&&!openCycleForPO(p.id);});
+  var countyOpts=counties.map(function(c){return '<option value="'+c.id+'">'+he(c.name)+'</option>';}).join('');
+  var idleOpts=idle.map(function(p){return '<option value="'+p.id+'">'+he(p.job_name||'(no name)')+(p.po_number?' \u00b7 PO '+he(p.po_number):'')+'</option>';}).join('');
+  var html=''
+    +'<div class="seg"><button id="nd-seg-new" class="on" onclick="ndMode(\'new\')">New job</button><button id="nd-seg-exist" onclick="ndMode(\'exist\')">Existing job</button></div>'
+    +'<div id="nd-new">'
+      +'<div class="field"><label>Job name</label><input id="nd-job" placeholder="e.g. Riverside Grading"></div>'
+      +'<div class="field"><label>Job address</label><input id="nd-addr" placeholder="Street, City, ST ZIP"></div>'
+      +'<div class="field-row"><div class="field"><label>PO number</label><input id="nd-po" placeholder="optional"></div>'
+      +'<div class="field"><label>County (rate)</label><select id="nd-county">'+countyOpts+'</select></div></div>'
+      +'<div class="field"><label>Client / bill-to name</label><input id="nd-client" placeholder="optional"></div>'
+      +'<div class="field-row"><div class="field"><label>Client address</label><input id="nd-claddr" placeholder="optional"></div>'
+      +'<div class="field"><label>Client email</label><input id="nd-clemail" placeholder="optional"></div></div>'
+    +'</div>'
+    +'<div id="nd-exist" style="display:none">'
+      +(idle.length?'<div class="field"><label>Pick a job with no dumpster on site</label><select id="nd-existpo">'+idleOpts+'</select></div>':'<div class="empty">Every job already has a dumpster on site. Create a new job instead.</div>')
+    +'</div>'
+    +'<div class="field"><label>Delivered date (clock starts)</label><input id="nd-date" type="date" value="'+todayStr()+'"></div>'
+    +'<button class="btn primary wide" onclick="submitNewDumpster()">Deliver &amp; Start Clock</button>';
+  openModal('New Dumpster',html);
+}
+var _ndMode='new';
+function ndMode(m){_ndMode=m;document.getElementById('nd-new').style.display=m==='new'?'block':'none';document.getElementById('nd-exist').style.display=m==='exist'?'block':'none';document.getElementById('nd-seg-new').classList.toggle('on',m==='new');document.getElementById('nd-seg-exist').classList.toggle('on',m==='exist');}
+function submitNewDumpster(){
+  var date=document.getElementById('nd-date').value||todayStr();
+  var poId;
+  if(_ndMode==='new'){
+    var job=(document.getElementById('nd-job').value||'').trim();
+    if(!job){alert('Enter a job name.');return;}
+    var p={id:uid(),po_number:(document.getElementById('nd-po').value||'').trim(),job_name:job,job_addr:(document.getElementById('nd-addr').value||'').trim(),
+      client_name:(document.getElementById('nd-client').value||'').trim(),client_addr:(document.getElementById('nd-claddr').value||'').trim(),client_email:(document.getElementById('nd-clemail').value||'').trim(),
+      county_id:document.getElementById('nd-county').value,status:'active',notes:'',created:todayStr(),ord:pos.length};
+    pos.push(p);_new[p.id]=true;poId=p.id;
+  } else {
+    var sel=document.getElementById('nd-existpo');
+    if(!sel){alert('Create a new job instead.');return;}
+    poId=sel.value;
+  }
+  if(openCycleForPO(poId)){alert('That job already has a dumpster on site.');return;}
+  var n=cycles.filter(function(c){return c.po_id===poId;}).length+1;
+  var cy={id:uid(),po_id:poId,cycle_no:n,delivered:date,closed:'',status:'open',close_type:'',weight_lb:null,ticket:'',invoice_id:'',ord:cycles.length};
+  cycles.push(cy);_new[cy.id]=true;
+  save();closeModal();switchTab('active');renderAll();showSync('\u2714 Dumpster delivered');
+}
+
+// ============ BILL (Change Out / Final Pickup) ============
+var _billCtx=null;
+function openBill(cycleId,type){
+  var cy=cycles.find(function(c){return c.id===cycleId;});if(!cy)return;
+  var p=pos.find(function(x){return x.id===cy.po_id;})||{};
+  var ct=countyById(p.county_id);
+  _billCtx={cycleId:cycleId,type:type};
+  var title=type==='final'?'Final Pickup':'Change Out';
+  var html=''
+    +'<div style="font-size:13px;color:var(--ink3);margin-bottom:14px">'+he(p.job_name||'')+' \u00b7 '+he(ct?ct.name:'')+' \u00b7 delivered '+fmtNice(cy.delivered)+'</div>'
+    +'<div class="field-row"><div class="field"><label>Total net weight (lb)</label><input id="bl-wt" type="number" inputmode="numeric" placeholder="e.g. 5300" oninput="updatePreview()"></div>'
+    +'<div class="field"><label>Pickup date</label><input id="bl-date" type="date" value="'+todayStr()+'" onchange="updatePreview()"></div></div>'
+    +'<div class="field"><label>Landfill ticket # (optional)</label><input id="bl-ticket" placeholder="scale ticket"></div>'
+    +'<div id="bl-preview"></div>'
+    +(type==='changeout'
+        ?'<div class="pv-line muted" style="margin-bottom:12px">A fresh 10-day / 2-ton cycle starts on this job as of the pickup date.</div>'
+        :'<div class="pv-line muted" style="margin-bottom:12px">This closes the job \u2014 no new dumpster is added.</div>')
+    +'<button class="btn primary wide" onclick="confirmBill()">Generate Invoice</button>';
+  openModal(title,html);
+  updatePreview();
+}
+function updatePreview(){
+  if(!_billCtx)return;
+  var cy=cycles.find(function(c){return c.id===_billCtx.cycleId;});if(!cy)return;
+  var p=pos.find(function(x){return x.id===cy.po_id;})||{};
+  var ct=countyById(p.county_id);
+  var wt=+(document.getElementById('bl-wt').value||0);
+  var date=document.getElementById('bl-date').value||todayStr();
+  var b=computeBill(ct,cy.delivered,date,wt);
+  var h='<div class="preview">'
+    +'<div class="pv-line"><span>Base \u2014 '+he(company.dumpsterSize)+' ('+num(b.includedDays)+' days, '+num(b.allowanceLb)+' lb)</span><span class="v">'+money(b.base)+'</span></div>';
+  if(b.extraDays>0)h+='<div class="pv-line"><span>Extra rental \u2014 '+b.extraDays+' day'+(b.extraDays>1?'s':'')+' \u00d7 '+money(b.dayRate)+'</span><span class="v">'+money(b.extraDaysAmt)+'</span></div>';
+  else h+='<div class="pv-line muted"><span>Day '+b.days+' of '+num(b.includedDays)+' \u2014 no extra days</span><span class="v">'+money(0)+'</span></div>';
+  if(b.overLb>0)h+='<div class="pv-line"><span>Excess tonnage \u2014 '+num(b.overLb)+' lb ('+num(b.overTon,3)+' tn) \u00d7 '+money(b.overRate)+'</span><span class="v">'+money(b.overAmt)+'</span></div>';
+  else h+='<div class="pv-line muted"><span>Weight within '+num(b.allowanceLb)+' lb allowance</span><span class="v">'+money(0)+'</span></div>';
+  h+='<div class="pv-line"><span>Fuel surcharge</span><span class="v">'+money(b.fuel)+'</span></div>'
+    +'<div class="pv-total"><span class="l">Total</span><span class="v">'+money(b.total)+'</span></div></div>';
+  document.getElementById('bl-preview').innerHTML=h;
+}
+function confirmBill(){
+  if(!_billCtx)return;
+  var cy=cycles.find(function(c){return c.id===_billCtx.cycleId;});if(!cy)return;
+  var p=pos.find(function(x){return x.id===cy.po_id;})||{};
+  var ct=countyById(p.county_id);
+  var wt=+(document.getElementById('bl-wt').value||0);
+  var date=document.getElementById('bl-date').value||todayStr();
+  if(!wt){if(!confirm('No weight entered. Bill with 0 lb?'))return;}
+  var b=computeBill(ct,cy.delivered,date,wt);
+  var invNo=nextInvoiceNo();
+  var data={
+    invoice_no:invNo,date:date,
+    company:JSON.parse(JSON.stringify(company)),
+    billTo:{name:p.client_name||'',addr:p.client_addr||'',email:p.client_email||''},
+    job:{name:p.job_name||'',addr:p.job_addr||'',po_number:p.po_number||'',dumpster:company.dumpsterSize,ticket:document.getElementById('bl-ticket').value||'',county:ct?ct.name:''},
+    delivered:cy.delivered,pickedUp:date,days:b.days,weightLb:wt,allowanceLb:b.allowanceLb,
+    lines:b, closeType:_billCtx.type
+  };
+  var inv={id:uid(),invoice_no:invNo,po_id:p.id,cycle_id:cy.id,date:date,data:data,total:b.total,status:'unpaid',ord:invoices.length};
+  invoices.push(inv);_new[inv.id]=true;
+
+  // close the cycle
+  cy.status='billed';cy.closed=date;cy.close_type=_billCtx.type;cy.weight_lb=wt;cy.ticket=data.job.ticket;cy.invoice_id=inv.id;
+
+  if(_billCtx.type==='changeout'){
+    var n=cycles.filter(function(c){return c.po_id===p.id;}).length+1;
+    var nc={id:uid(),po_id:p.id,cycle_no:n,delivered:date,closed:'',status:'open',close_type:'',weight_lb:null,ticket:'',invoice_id:'',ord:cycles.length};
+    cycles.push(nc);_new[nc.id]=true;
+    p.status='active';
+  } else {
+    p.status='active'; // job stays in list (idle) but no open cycle
+  }
+  save();closeModal();renderAll();
+  viewInvoice(inv.id);
+  showSync('\u2714 Invoice #'+invNo+' created');
+}
+
+// ============ PO EDIT ============
+function openPO(id){
+  if(!counties.length)seed();
+  var p=id?pos.find(function(x){return x.id===id;}):null;
+  var countyOpts=counties.map(function(c){return '<option value="'+c.id+'"'+(p&&p.county_id===c.id?' selected':'')+'>'+he(c.name)+'</option>';}).join('');
+  var html=''
+    +'<div class="field"><label>Job name</label><input id="po-job" value="'+he(p?p.job_name:'')+'"></div>'
+    +'<div class="field"><label>Job address</label><input id="po-addr" value="'+he(p?p.job_addr:'')+'"></div>'
+    +'<div class="field-row"><div class="field"><label>PO number</label><input id="po-po" value="'+he(p?p.po_number:'')+'"></div>'
+    +'<div class="field"><label>County (rate)</label><select id="po-county">'+countyOpts+'</select></div></div>'
+    +'<div class="field"><label>Client / bill-to name</label><input id="po-client" value="'+he(p?p.client_name:'')+'"></div>'
+    +'<div class="field-row"><div class="field"><label>Client address</label><input id="po-claddr" value="'+he(p?p.client_addr:'')+'"></div>'
+    +'<div class="field"><label>Client email</label><input id="po-clemail" value="'+he(p?p.client_email:'')+'"></div></div>'
+    +'<button class="btn primary wide" onclick="savePO('+(p?'\''+p.id+'\'':'null')+')">Save</button>';
+  if(p)html+='<button class="btn danger wide" style="margin-top:8px" onclick="archivePO(\''+p.id+'\')">Archive job</button>';
+  openModal(p?'Edit Job / PO':'New PO',html);
+}
+function savePO(id){
+  var job=(document.getElementById('po-job').value||'').trim();
+  if(!job){alert('Enter a job name.');return;}
+  var p=id?pos.find(function(x){return x.id===id;}):null;
+  if(!p){p={id:uid(),status:'active',created:todayStr(),ord:pos.length};pos.push(p);_new[p.id]=true;}
+  p.job_name=job;p.job_addr=(document.getElementById('po-addr').value||'').trim();p.po_number=(document.getElementById('po-po').value||'').trim();
+  p.county_id=document.getElementById('po-county').value;
+  p.client_name=(document.getElementById('po-client').value||'').trim();p.client_addr=(document.getElementById('po-claddr').value||'').trim();p.client_email=(document.getElementById('po-clemail').value||'').trim();
+  save();closeModal();renderAll();
+}
+function archivePO(id){
+  if(openCycleForPO(id)){alert('Final Pickup the dumpster before archiving this job.');return;}
+  if(!confirm('Archive this job? It will be hidden from the Jobs list.'))return;
+  var p=pos.find(function(x){return x.id===id;});if(p){p.status='archived';save();closeModal();renderAll();}
+}
+
+// ============ COUNTY / RATE EDIT ============
+function openCounty(id){
+  var c=id?counties.find(function(x){return x.id===id;}):null;
+  var html=''
+    +'<div class="field"><label>County / jurisdiction name</label><input id="ct-name" value="'+he(c?c.name:'')+'" placeholder="e.g. Anderson County, SC"></div>'
+    +'<div class="field-row"><div class="field"><label>Base price ($)</label><input id="ct-base" type="number" step="0.01" value="'+(c?c.base_price:400)+'"></div>'
+    +'<div class="field"><label>Fuel surcharge ($)</label><input id="ct-fuel" type="number" step="0.01" value="'+(c?c.fuel:19)+'"></div></div>'
+    +'<div class="field-row"><div class="field"><label>Days included</label><input id="ct-days" type="number" value="'+(c?c.included_days:10)+'"></div>'
+    +'<div class="field"><label>$ / day after</label><input id="ct-drate" type="number" step="0.01" value="'+(c?c.day_rate:10)+'"></div></div>'
+    +'<div class="field-row"><div class="field"><label>Weight included (lb)</label><input id="ct-lb" type="number" value="'+(c?c.included_lb:4000)+'"></div>'
+    +'<div class="field"><label>$ / ton over</label><input id="ct-ton" type="number" step="0.01" value="'+(c?c.overage_per_ton:50)+'"></div></div>'
+    +'<button class="btn primary wide" onclick="saveCounty('+(c?'\''+c.id+'\'':'null')+')">Save rate card</button>';
+  if(c&&counties.length>1)html+='<button class="btn danger wide" style="margin-top:8px" onclick="delCounty(\''+c.id+'\')">Delete</button>';
+  openModal(c?'Edit Rate Card':'Add County',html);
+}
+function saveCounty(id){
+  var name=(document.getElementById('ct-name').value||'').trim();
+  if(!name){alert('Enter a county name.');return;}
+  var c=id?counties.find(function(x){return x.id===id;}):null;
+  if(!c){c={id:uid(),ord:counties.length};counties.push(c);_new[c.id]=true;}
+  c.name=name;
+  c.base_price=+document.getElementById('ct-base').value||0;
+  c.fuel=+document.getElementById('ct-fuel').value||0;
+  c.included_days=+document.getElementById('ct-days').value||0;
+  c.day_rate=+document.getElementById('ct-drate').value||0;
+  c.included_lb=+document.getElementById('ct-lb').value||0;
+  c.overage_per_ton=+document.getElementById('ct-ton').value||0;
+  save();closeModal();renderAll();
+}
+function delCounty(id){
+  if(pos.some(function(p){return p.county_id===id;})){alert('Some jobs use this county. Reassign them first.');return;}
+  if(!confirm('Delete this rate card?'))return;
+  delRow('counties',id);closeModal();renderAll();
+}
+
+// ============ SETTINGS ============
+function openSettings(){
+  var html=''
+    +'<div class="field"><label>Business name</label><input id="st-name" value="'+he(company.name)+'"></div>'
+    +'<div class="field"><label>Subtitle line</label><input id="st-sub" value="'+he(company.subtitle)+'"></div>'
+    +'<div class="field-row"><div class="field"><label>Address line 1</label><input id="st-a1" value="'+he(company.addr1)+'"></div>'
+    +'<div class="field"><label>Address line 2</label><input id="st-a2" value="'+he(company.addr2)+'"></div></div>'
+    +'<div class="field-row"><div class="field"><label>Phone</label><input id="st-ph" value="'+he(company.phone)+'"></div>'
+    +'<div class="field"><label>Email (optional)</label><input id="st-em" value="'+he(company.email)+'"></div></div>'
+    +'<div class="field"><label>Make checks payable to</label><input id="st-payee" value="'+he(company.payee)+'"></div>'
+    +'<div class="field-row"><div class="field"><label>Payment terms</label><input id="st-terms" value="'+he(company.terms)+'"></div>'
+    +'<div class="field"><label>Dumpster size label</label><input id="st-size" value="'+he(company.dumpsterSize)+'"></div></div>'
+    +'<button class="btn primary wide" onclick="saveCompany()">Save</button>';
+  openModal('Company Settings',html);
+}
+function saveCompany(){
+  company.name=document.getElementById('st-name').value;company.subtitle=document.getElementById('st-sub').value;
+  company.addr1=document.getElementById('st-a1').value;company.addr2=document.getElementById('st-a2').value;
+  company.phone=document.getElementById('st-ph').value;company.email=document.getElementById('st-em').value;
+  company.payee=document.getElementById('st-payee').value;company.terms=document.getElementById('st-terms').value;
+  company.dumpsterSize=document.getElementById('st-size').value;
+  saveSettings();closeModal();renderAll();showSync('\u2714 Settings saved');
+}
+
+// ============ INVOICE VIEW / PRINT ============
+function invoiceHTML(d){
+  var L=d.lines||{};
+  var rows='';
+  rows+='<tr><td><div class="inv-desc">Dumpster rental \u2014 '+he(d.job.dumpster)+' (base)</div><div class="inv-subd">Includes first '+num(L.includedDays)+' days and first '+num(L.allowanceLb)+' lb</div></td><td class="r">'+money(L.base)+'</td></tr>';
+  if(L.extraDays>0)rows+='<tr><td><div class="inv-desc">Additional rental days</div><div class="inv-subd">'+L.extraDays+' day'+(L.extraDays>1?'s':'')+' beyond day '+num(L.includedDays)+' \u00d7 '+money(L.dayRate)+'/day</div></td><td class="r">'+money(L.extraDaysAmt)+'</td></tr>';
+  if(L.overLb>0)rows+='<tr><td><div class="inv-desc">Excess tonnage \u2014 '+he(d.job.county)+'</div><div class="inv-subd">'+num(d.weightLb)+' lb \u2212 '+num(L.allowanceLb)+' lb allowance = '+num(L.overLb)+' lb ('+num(L.overTon,3)+' tn) \u00d7 '+money(L.overRate)+'/tn</div></td><td class="r">'+money(L.overAmt)+'</td></tr>';
+  rows+='<tr><td><div class="inv-desc">Fuel surcharge</div><div class="inv-subd">Per haul / closeout</div></td><td class="r">'+money(L.fuel)+'</td></tr>';
+  var c=d.company||company;
+  return '<div class="inv-sheet">'
+    +'<div class="inv-head"><div><div class="inv-name">'+he(c.name)+'</div><div class="inv-sub">'+he(c.subtitle)+'</div>'
+    +'<div class="inv-contact">'+he(c.addr1)+(c.addr2?' \u00b7 '+he(c.addr2):'')+'<br>'+(c.phone?'Ph: '+he(c.phone):'')+(c.email?' \u00b7 '+he(c.email):'')+'</div></div>'
+    +'<div class="inv-doc"><div class="inv-word">Invoice</div><div class="inv-num">No. '+d.invoice_no+'</div>'
+    +'<div class="inv-meta"><div><b>Invoice date</b> &nbsp; '+fmtNice(d.date)+'</div>'+(d.job.po_number?'<div><b>PO number</b> &nbsp; '+he(d.job.po_number)+'</div>':'')+'</div></div></div>'
+    +'<div class="inv-blocks"><div><div class="inv-cap">Bill To</div><div class="inv-body">'
+    +'<div class="b">'+he(d.billTo.name||'\u2014')+'</div>'+(d.billTo.addr?'<div>'+he(d.billTo.addr)+'</div>':'')+(d.billTo.email?'<div>'+he(d.billTo.email)+'</div>':'')+'</div></div>'
+    +'<div class="inv-job"><div class="inv-cap">Job &amp; Rental</div>'
+    +'<div class="inv-kv"><span class="k">Job</span><span class="v">'+he(d.job.name)+'</span></div>'
+    +(d.job.addr?'<div class="inv-kv"><span class="k">Address</span><span class="v">'+he(d.job.addr)+'</span></div>':'')
+    +'<div class="inv-kv"><span class="k">Dumpster</span><span class="v">'+he(d.job.dumpster)+'</span></div>'
+    +(d.job.ticket?'<div class="inv-kv"><span class="k">Ticket</span><span class="v">'+he(d.job.ticket)+'</span></div>':'')
+    +'<div class="inv-kv"><span class="k">Jurisdiction</span><span class="v">'+he(d.job.county)+'</span></div></div></div>'
+    +'<div class="inv-period"><div class="inv-cell"><div class="lab">Delivered</div><div class="val">'+fmtNice(d.delivered)+'</div></div>'
+    +'<div class="inv-cell"><div class="lab">Picked up</div><div class="val">'+fmtNice(d.pickedUp)+'</div></div>'
+    +'<div class="inv-cell"><div class="lab">Days on site</div><div class="val">'+num(d.days)+'</div></div>'
+    +'<div class="inv-cell"><div class="lab">Net weight</div><div class="val">'+num(d.weightLb)+' lb</div></div></div>'
+    +'<table class="inv-tbl"><thead><tr><th>Description</th><th class="r">Amount</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="inv-foot"><div class="inv-totals">'
+    +'<div class="inv-trow"><span class="lab">Subtotal</span><span class="amt">'+money(L.subtotal)+'</span></div>'
+    +'<div class="inv-trow"><span class="lab">Sales tax</span><span class="amt">'+money(0)+'</span></div>'
+    +'<div class="inv-grand"><span class="lab">Total Due</span><span class="amt">'+money(L.total)+'</span></div></div></div>'
+    +'<div class="inv-remit"><div><div class="cap">Remit Payment To</div>'+he(c.payee)+'<br>'+he(c.addr1)+(c.addr2?', '+he(c.addr2):'')+'</div>'
+    +'<div style="text-align:right"><div class="cap">Terms</div>'+he(c.terms||'')+'<br>Make checks payable to '+he(c.payee)+'</div></div>'
+    +'<div class="inv-thanks">Thank you for your business.</div></div>';
+}
+function viewInvoice(id){
+  var inv=invoices.find(function(x){return x.id===id;});if(!inv)return;
+  document.getElementById('inv-sheet-mount').innerHTML=invoiceHTML(inv.data||{});
+  document.getElementById('invoice-print').classList.add('open');
+  window.scrollTo(0,0);
+}
+function closeInvoice(){document.getElementById('invoice-print').classList.remove('open');}
+
+// ============ GO ============
+load();
+</script>
+</body></html>
