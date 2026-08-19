@@ -144,9 +144,8 @@ html,body{min-height:100%;background:var(--surf);color:var(--ink);font-family:va
 }
 
 /* ============ INVOICE SHEET (client-facing, print) ============ */
-#invoice-print{display:none;}
 .inv-wrap{position:fixed;inset:0;background:#e9ebee;z-index:500;overflow-y:auto;display:none;}
-.inv-wrap.open{display:block;}
+#invoice-print.open{display:block;}
 .inv-bar{max-width:816px;margin:0 auto;padding:12px 8px;display:flex;justify-content:space-between;gap:8px;}
 .inv-sheet{background:#fff;max-width:816px;margin:0 auto 40px;padding:52px 54px 38px;box-shadow:0 1px 3px rgba(0,0,0,.14);color:#171a1f;font-family:var(--f);}
 .inv-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #171a1f;padding-bottom:16px;}
