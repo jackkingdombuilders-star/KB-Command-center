@@ -10,6 +10,7 @@
 <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;KM Dumpsters&quot;,&quot;short_name&quot;:&quot;KM Dumpsters&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;background_color&quot;:&quot;%23FAF7F2&quot;,&quot;theme_color&quot;:&quot;%23FAF7F2&quot;}">
 <title>Kingdom Materials — Dumpster Tracking</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --gold:#8A6418;--gold-lt:#B8923E;--gold-bg:#F5EDD8;--gold-bd:rgba(138,100,24,.25);
@@ -278,7 +279,10 @@ table.inv-tbl{width:100%;border-collapse:collapse;margin-top:24px;}
 <div class="inv-wrap" id="invoice-print">
   <div class="inv-bar">
     <button class="btn ghost" onclick="closeInvoice()">&larr; Back</button>
-    <button class="btn dark" onclick="window.print()">Save as PDF / Print</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost" onclick="window.print()">Print</button>
+      <button class="btn dark" onclick="downloadCurrentInvoice()">&#8681; Download PDF</button>
+    </div>
   </div>
   <div id="inv-sheet-mount"></div>
 </div>
@@ -841,13 +845,89 @@ function invoiceHTML(d){
     +'<div style="text-align:right"><div class="cap">Terms</div>'+he(c.terms||'')+'<br>Make checks payable to '+he(c.payee)+'</div></div>'
     +'<div class="inv-thanks">Thank you for your business.</div></div>';
 }
+var _curInv=null;
 function viewInvoice(id){
   var inv=invoices.find(function(x){return x.id===id;});if(!inv)return;
+  _curInv=id;
   document.getElementById('inv-sheet-mount').innerHTML=invoiceHTML(inv.data||{});
   document.getElementById('invoice-print').classList.add('open');
   window.scrollTo(0,0);
 }
 function closeInvoice(){document.getElementById('invoice-print').classList.remove('open');}
+function downloadCurrentInvoice(){var inv=invoices.find(function(x){return x.id===_curInv;});if(inv)downloadInvoicePDF(inv);}
+
+// ============ REAL PDF (jsPDF) ============
+function invoicePdfDoc(d){
+  d=d||{};var L=d.lines||{};var c=d.company||company;
+  var ns=(typeof window!=='undefined'&&window.jspdf)||null;var JsPDF=ns&&ns.jsPDF;
+  if(!JsPDF)return null;
+  var doc=new JsPDF({unit:'pt',format:'letter',compress:true});
+  var M=42,W=612,R=W-M;
+  var ink=[23,26,31],gray=[74,81,91],amber=[194,94,10],hair=[215,218,224],panel=[245,246,248],white=[255,255,255];
+  function T(str,x,yy,o){o=o||{};doc.setFont('helvetica',o.bold?'bold':'normal');doc.setFontSize(o.size||10);var col=o.color||ink;doc.setTextColor(col[0],col[1],col[2]);doc.text(String(str==null?'':str),x,yy,o.align?{align:o.align}:undefined);}
+  function LN(x1,y1,x2,y2,col,w){col=col||hair;doc.setDrawColor(col[0],col[1],col[2]);doc.setLineWidth(w||1);doc.line(x1,y1,x2,y2);}
+  function RECT(x,yy,w,h,col){col=col||panel;doc.setFillColor(col[0],col[1],col[2]);doc.rect(x,yy,w,h,'F');}
+  function RRECT(x,yy,w,h,r,col){col=col||panel;doc.setFillColor(col[0],col[1],col[2]);doc.roundedRect(x,yy,w,h,r,r,'F');}
+  function clip(str,max,size,bold){doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);str=String(str||'');if(doc.getTextWidth(str)<=max)return str;while(str.length&&doc.getTextWidth(str+'\u2026')>max)str=str.slice(0,-1);return str+'\u2026';}
+
+  var y=M+10;
+  T(c.name||'',M,y,{bold:true,size:15});
+  T((c.subtitle||'').toUpperCase(),M,y+13,{size:7.5,color:gray});
+  T((c.addr1||'')+(c.addr2?'  '+c.addr2:''),M,y+27,{size:8.5,color:gray});
+  var ph=(c.phone?'Ph: '+c.phone:'')+(c.email?'   '+c.email:'');if(ph)T(ph,M,y+38,{size:8.5,color:gray});
+  T('INVOICE',R,y+4,{bold:true,size:20,align:'right'});
+  doc.setFont('helvetica','bold');doc.setFontSize(9);var chipTxt='No. '+d.invoice_no;var tw=doc.getTextWidth(chipTxt);
+  var chipW=tw+18,chipH=15,chipX=R-chipW,chipY=y+11;RRECT(chipX,chipY,chipW,chipH,2,amber);
+  T(chipTxt,chipX+chipW/2,chipY+10.5,{bold:true,size:9,color:white,align:'center'});
+  T('Invoice date   '+fmtNice(d.date),R,y+40,{size:8.5,color:gray,align:'right'});
+  if(d.job&&d.job.po_number)T('PO   '+d.job.po_number,R,y+51,{size:8.5,color:gray,align:'right'});
+  var hb=y+58;LN(M,hb,R,hb,ink,1.5);
+
+  var by=hb+22,colW=(R-M-16)/2,leftX=M,rightX=M+colW+16;
+  T('BILL TO',leftX,by,{size:7.5,color:amber,bold:true});
+  T(clip((d.billTo&&d.billTo.name)||'\u2014',colW,10,true),leftX,by+15,{bold:true,size:10});
+  var ly=by+27;
+  if(d.billTo&&d.billTo.addr){T(clip(d.billTo.addr,colW,9),leftX,ly,{size:9,color:gray});ly+=11;}
+  if(d.billTo&&d.billTo.email){T(clip(d.billTo.email,colW,9),leftX,ly,{size:9,color:gray});ly+=11;}
+  var jr=[['Job',d.job.name],['Address',d.job.addr],['Dumpster',d.job.dumpster],['Ticket',d.job.ticket],['Jurisdiction',d.job.county]].filter(function(r){return r[1];});
+  var jbTop=by-12,jbH=20+jr.length*13;RECT(rightX,jbTop,colW,jbH,panel);
+  T('JOB & RENTAL',rightX+12,by+2,{size:7.5,color:amber,bold:true});
+  var jy=by+16;jr.forEach(function(r){T(r[0],rightX+12,jy,{size:8.5,color:gray});T(clip(r[1],colW-24-doc.getTextWidth(r[0])-8,8.5,true),rightX+colW-12,jy,{size:8.5,bold:true,align:'right'});jy+=13;});
+
+  var ps=Math.max(ly,jbTop+jbH)+18,psH=38,cw=(R-M)/4;
+  doc.setDrawColor(hair[0],hair[1],hair[2]);doc.setLineWidth(1);doc.rect(M,ps,R-M,psH);
+  [['DELIVERED',fmtNice(d.delivered)],['PICKED UP',fmtNice(d.pickedUp)],['DAYS ON SITE',num(d.days)],['NET WEIGHT',num(d.weightLb)+' lb']].forEach(function(cl,i){var cx=M+cw*i;if(i>0)LN(cx,ps,cx,ps+psH,hair,1);T(cl[0],cx+11,ps+14,{size:6.8,color:gray,bold:true});T(cl[1],cx+11,ps+29,{size:10.5,bold:true});});
+
+  var ty=ps+psH+26;
+  T('DESCRIPTION',M,ty,{size:7.5,color:gray,bold:true});T('AMOUNT',R,ty,{size:7.5,color:gray,bold:true,align:'right'});
+  LN(M,ty+6,R,ty+6,ink,1.5);ty+=6;
+  function item(desc,sub,amt){ty+=16;T(desc,M,ty,{bold:true,size:9.5});T(money(amt),R,ty,{bold:true,size:9.5,align:'right'});if(sub){ty+=11;T(sub,M,ty,{size:8,color:gray});}ty+=10;LN(M,ty,R,ty,hair,1);}
+  item('Dumpster rental \u2014 '+d.job.dumpster+' (base)','Includes first '+num(L.includedDays)+' days and first '+num(L.allowanceLb)+' lb',L.base);
+  if(L.extraDays>0)item('Additional rental days',L.extraDays+' day'+(L.extraDays>1?'s':'')+' beyond day '+num(L.includedDays)+' \u00d7 '+money(L.dayRate)+'/day',L.extraDaysAmt);
+  if(L.overLb>0)item('Excess tonnage \u2014 '+d.job.county,num(d.weightLb)+' lb less '+num(L.allowanceLb)+' lb allowance = '+num(L.overLb)+' lb ('+num(L.overTon,3)+' tn) x '+money(L.overRate)+'/tn',L.overAmt);
+  item('Fuel surcharge','Per haul / closeout',L.fuel);
+
+  var tx=R-200,tvy=ty+22;
+  T('Subtotal',tx,tvy,{size:9.5,color:gray});T(money(L.subtotal),R,tvy,{size:9.5,bold:true,align:'right'});
+  T('Sales tax',tx,tvy+16,{size:9.5,color:gray});T(money(0),R,tvy+16,{size:9.5,bold:true,align:'right'});
+  LN(tx,tvy+25,R,tvy+25,ink,1.5);
+  T('TOTAL DUE',tx,tvy+43,{size:9,bold:true});T(money(L.total),R,tvy+45,{size:16,bold:true,align:'right'});
+
+  var ry=tvy+82;LN(M,ry,R,ry,hair,1);
+  T('REMIT PAYMENT TO',M,ry+16,{size:7,color:ink,bold:true});
+  T(c.payee||'',M,ry+28,{size:9,color:gray});
+  T((c.addr1||'')+(c.addr2?', '+c.addr2:''),M,ry+39,{size:9,color:gray});
+  T('TERMS',R,ry+16,{size:7,color:ink,bold:true,align:'right'});
+  T(c.terms||'',R,ry+28,{size:9,color:gray,align:'right'});
+  T('Make checks payable to '+(c.payee||''),R,ry+39,{size:9,color:gray,align:'right'});
+  T('Thank you for your business.',W/2,ry+66,{size:9,color:gray,align:'center'});
+  return doc;
+}
+function downloadInvoicePDF(inv){
+  var d=inv.data||{};var doc=invoicePdfDoc(d);
+  if(!doc){alert('PDF engine is still loading \u2014 wait a second and tap Download again.');return;}
+  doc.save('Invoice-'+d.invoice_no+'.pdf');
+}
 
 // ============ GO ============
 load();
