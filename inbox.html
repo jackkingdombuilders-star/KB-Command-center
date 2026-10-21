@@ -353,8 +353,17 @@ body.framed .wrap{padding:4px 0 40px;}
       return;
     }
     var url = row.getAttribute('data-url');
-    if (url) window.open(url, 'kbgmail');
+    if (url) openGmail(url);
   });
+
+  // With the KB Gmail helper installed in Chrome, the thread opens in the Gmail tab already open.
+  function openGmail(url) {
+    if (document.documentElement.getAttribute('data-kb-gmail-tab') === '1') {
+      window.postMessage({ type: 'kb-open-gmail', url: url }, location.origin);
+    } else {
+      window.open(url, 'kbgmail');
+    }
+  }
 
   document.getElementById('refresh').onclick = load;
   document.getElementById('style-link').onclick = function(){
