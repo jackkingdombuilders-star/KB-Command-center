@@ -499,6 +499,7 @@ select{appearance:none;cursor:pointer;}
   <div class="tabs">
     <div class="tab active" onclick="showView('dashboard')"><span>Dashboard</span></div>
     <div class="tab" onclick="showView('todos')"><span>To-Dos</span> <span class="tbg" id="td-badge">42</span></div>
+    <div class="tab" onclick="showView('inbox')"><span>Inbox</span> <span class="tbg red" id="inbox-badge" style="display:none">0</span></div>
     <div class="tab" onclick="showView('board')"><span>Leads Board</span></div>
     <div class="tab" onclick="showView('calls')"><span>📞 Calls</span> <span class="tbg" id="calls-badge">0</span></div>
     <div class="tab" onclick="showView('goals')"><span>🎯 Goals</span></div>
@@ -527,6 +528,9 @@ select{appearance:none;cursor:pointer;}
   </button>
   <button class="mob-tab" id="mobt-goals" onclick="mobShowView('goals')">
     <span class="mob-tab-icon">🎯</span>Goals
+  </button>
+  <button class="mob-tab" id="mobt-inbox" onclick="mobShowView('inbox')">
+    <span class="mob-tab-icon">✉️</span>Inbox
   </button>
 </nav>
 
@@ -670,6 +674,11 @@ select{appearance:none;cursor:pointer;}
   </div>
 
   <!-- âââ AI ASSISTANT âââ -->
+  <!-- INBOX: open email items. All inbox code lives in inbox.html. -->
+  <div class="view" id="view-inbox">
+    <iframe id="inbox-frame" src="inbox.html" title="Inbox" style="width:100%;height:calc(100vh - 150px);min-height:480px;border:0;background:transparent;display:block;"></iframe>
+  </div>
+
   <div class="view" id="view-email">
     <div class="ph">
       <div><div class="pt">AI Writing Assistant</div><div class="ps">Draft, revise, or write emails in your voice</div></div>
@@ -2298,4 +2307,12 @@ setTimeout(tryRestoreCalendar,2000);
 <script src="https://accounts.google.com/gsi/client" async="" defer=""></script>
 
 
+<script>
+// Inbox tab badge: inbox.html reports how many replies you owe.
+window.addEventListener('message',function(e){
+  if(e.origin!==location.origin||!e.data||typeof e.data.kbInboxCount!=='number')return;
+  var b=document.getElementById('inbox-badge');if(!b)return;
+  b.textContent=e.data.kbInboxCount;b.style.display=e.data.kbInboxCount?'':'none';
+});
+</script>
 </body></html>
