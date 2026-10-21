@@ -122,7 +122,7 @@ body.framed .wrap{padding:4px 0 40px;}
   <div class="head">
     <div>
       <div class="pt">Inbox</div>
-      <div class="ps">Open email items. Click one to open the thread in Gmail.</div>
+      <div class="ps" id="sub">Open email items. Click one to open the thread in Gmail.</div>
     </div>
     <div class="meta"><span id="flash"></span><span id="scan"></span><div class="costbox" id="costbox" title="AI cost from the scanner. Official bill is in the Claude Console."><div><span>This month</span><b id="c-month">$0.00</b></div><div><span>On pace for</span><b id="c-pace">$0.00</b></div></div><button class="btn" id="refresh">Refresh</button></div>
   </div>
@@ -130,7 +130,7 @@ body.framed .wrap{padding:4px 0 40px;}
   <div id="app"></div>
   <div class="foot" id="foot" style="display:none">
     <span id="hidden"></span>
-    <span><a id="muted-link">Muted senders</a> &middot; <a id="style-link">How Jack writes</a></span>
+    <span>Opens in <a id="open-in" title="Switch between Apple Mail and Gmail on this device">Gmail</a> &middot; <a id="muted-link">Muted senders</a> &middot; <a id="style-link">How Jack writes</a></span>
   </div>
 </div>
 <div class="ov" id="ov-muted"><div class="modal"><h3>Muted senders</h3><div class="ps">Email from these senders stays off the list. Unmute to bring their new email back.</div><div id="muted-list" style="margin-top:10px"></div><div style="margin-top:14px;text-align:right"><button class="btn" id="close-muted">Close</button></div></div></div>
@@ -306,9 +306,40 @@ body.framed .wrap{padding:4px 0 40px;}
     }).catch(function(){});
   }
 
-  function flash(msg){
+  function flash(msg, ms){
     var f = document.getElementById('flash'); f.textContent = msg;
-    clearTimeout(flash._t); flash._t = setTimeout(function(){ f.textContent = ''; }, 3500);
+    clearTimeout(flash._t); flash._t = setTimeout(function(){ f.textContent = ''; }, ms || 3500);
+  }
+
+  /* ---- Apple Mail or Gmail (saved per device: the Mac uses Apple Mail, the phone keeps Gmail) ---- */
+  var OPEN_KEY = 'kb_open_in';
+  function isMacDesktop(){ return /Macintosh/.test(navigator.userAgent) && !(navigator.maxTouchPoints > 1); }
+  function openIn(){ var v = store(OPEN_KEY); return (v === 'mail' || v === 'gmail') ? v : (isMacDesktop() ? 'mail' : 'gmail'); }
+  function showOpenIn(){
+    var m = openIn() === 'mail';
+    document.getElementById('open-in').textContent = m ? 'Apple Mail' : 'Gmail';
+    document.getElementById('sub').textContent = m
+      ? 'Open email items. Click one to open it in Apple Mail with the draft copied.'
+      : 'Open email items. Click one to open the thread in Gmail.';
+  }
+  function hasMailLink(it){ return !!(it && it.msg_rfc_id && it.msg_rfc_id !== '-'); }
+
+  // Copies inside the click, before Apple Mail takes focus.
+  function copyText(t){
+    var ok = false, ta = document.createElement('textarea');
+    ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    if (!ok && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(function(){});
+  }
+
+  // Apple Mail opens the exact email from its Message-ID.
+  function openInMail(it){
+    var a = document.createElement('a');
+    a.href = 'message:' + encodeURIComponent(it.msg_rfc_id);
+    a.style.display = 'none';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   function save(id, status, until){
@@ -353,8 +384,26 @@ body.framed .wrap{padding:4px 0 40px;}
       return;
     }
     var url = row.getAttribute('data-url');
+    var it2 = items.filter(function(i){ return i.id === id; })[0];
+    if (openIn() === 'mail') {
+      if (hasMailLink(it2)) {
+        var text = (!it2.needs_call && it2.draft_text) ? String(it2.draft_text).trim() : '';
+        if (text) copyText(text + '\n');
+        openInMail(it2);
+        return flash(text ? 'Draft copied. In Mail: Reply All (\u2318\u21e7R), then paste (\u2318V)'
+                          : (it2.needs_call ? 'Needs your call. In Mail: Reply All (\u2318\u21e7R)' : 'Opened in Mail. Reply All: \u2318\u21e7R'), 9000);
+      }
+      if (url) flash('No Apple Mail link for this one yet. Opened in Gmail.', 6000);
+    }
     if (url) openGmail(url);
   });
+
+  document.getElementById('open-in').onclick = function(){
+    store(OPEN_KEY, openIn() === 'mail' ? 'gmail' : 'mail');
+    showOpenIn();
+    flash('Emails now open in ' + (openIn() === 'mail' ? 'Apple Mail' : 'Gmail') + ' on this device');
+  };
+  showOpenIn();
 
   // With the KB Gmail helper installed in Chrome, the thread opens in the Gmail tab already open.
   function openGmail(url) {
