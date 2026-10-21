@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KB Inbox</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#8A6418;--gold-bg:#F5EDD8;--gold-bd:rgba(138,100,24,.25);
+  --ink:#0F0C08;--ink2:#2A2218;--ink3:#524840;--ink4:#9A9088;
+  --surf:#EDE8DC;--surf2:#E0D8C8;--card:#FAF7F2;
+  --border:rgba(15,12,8,.10);--border2:rgba(15,12,8,.18);
+  --sh:0 1px 4px rgba(15,12,8,.09),0 1px 2px rgba(15,12,8,.06);
+  --red:#9E2218;--red-bg:#FAEBE9;--red-bd:rgba(158,34,24,.22);
+  --green:#1E5E42;--green-bg:#E5F2EC;--green-bd:rgba(30,94,66,.22);
+  --amber:#8A3E08;--amber-bg:#FDF0E4;--amber-bd:rgba(138,62,8,.22);
+  --fh:'Cormorant Garamond',serif;--f:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--surf);color:var(--ink);font-family:var(--f);font-size:14.5px;-webkit-font-smoothing:antialiased;}
+body.framed{background:transparent;}
+.wrap{max-width:1060px;margin:0 auto;padding:20px 16px 60px;}
+body.framed .wrap{padding:4px 0 40px;}
+
+/* header */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.pt{font-family:var(--fh);font-size:28px;font-weight:700;line-height:1.1;}
+.ps{font-size:12.5px;color:var(--ink3);margin-top:3px;}
+.meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink3);}
+#flash{color:var(--amber);font-weight:600;}
+.btn{font-family:var(--f);font-size:12px;font-weight:600;border:1px solid var(--border2);background:var(--card);color:var(--ink2);border-radius:5px;padding:5px 10px;cursor:pointer;}
+.btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* sections */
+.sec{background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh);margin-bottom:14px;overflow:hidden;}
+.sh{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--border);}
+.sh h2{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
+.cnt{font-size:11px;font-weight:700;color:var(--ink3);background:var(--surf);border-radius:10px;padding:1px 8px;}
+.empty{padding:12px 16px;font-size:13px;color:var(--ink4);}
+
+/* item */
+.item{display:flex;border-bottom:1px solid var(--border);cursor:pointer;}
+.item:last-child{border-bottom:none;}
+.item:hover{background:#F4EFE5;}
+.bar{width:4px;flex-shrink:0;}
+.item.amber .bar{background:var(--amber);}
+.item.red .bar{background:var(--red);}
+.item.delayed{opacity:.6;}
+.body{flex:1;min-width:0;padding:11px 16px 11px 14px;}
+.l1{display:flex;align-items:center;gap:7px;min-width:0;}
+.name{font-weight:700;font-size:14.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.chip{font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 8px;white-space:nowrap;flex-shrink:0;border:1px solid;}
+.chip.job{color:var(--gold);background:var(--gold-bg);border-color:var(--gold-bd);}
+.chip.call{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd);}
+.chip.draft{color:var(--green);background:var(--green-bg);border-color:var(--green-bd);}
+.chip.due{color:var(--ink3);background:var(--surf);border-color:var(--border2);}
+.chip.due.over{color:var(--red);background:var(--red-bg);border-color:var(--red-bd);}
+.chip.later{color:var(--ink3);background:transparent;border-color:var(--border2);}
+.chip.good{color:var(--green);background:var(--green-bg);border-color:var(--green-bd);}
+.chip.verify{color:#fff;background:var(--red);border-color:var(--red);}
+.chip.bt{color:#1A4A7C;background:#E6EEF8;border-color:rgba(26,74,124,.22);}
+.banner{border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;border:1px solid;}
+.banner.red{background:var(--red-bg);color:var(--red);border-color:var(--red-bd);}
+.banner.amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd);}
+.costbox{display:flex;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:5px 10px;box-shadow:var(--sh);}
+.costbox span{display:block;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink4);}
+.costbox b{font-size:13px;color:var(--ink);}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
+.mrow:last-child{border-bottom:none;}
+.when{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0;padding-left:10px;}
+.date{font-size:12px;color:var(--ink4);white-space:nowrap;}
+.age{font-size:11.5px;font-weight:700;border-radius:10px;padding:1px 8px;background:var(--surf);color:var(--ink3);}
+.item.amber .age{background:var(--amber-bg);color:var(--amber);}
+.item.red .age{background:var(--red-bg);color:var(--red);}
+.l2{font-size:14.5px;font-weight:500;color:var(--ink2);margin-top:4px;}
+.l3{display:flex;align-items:center;gap:12px;margin-top:4px;}
+.ctx{flex:1;min-width:0;font-size:12.5px;color:var(--ink3);line-height:1.45;}
+.ctx .subj{color:var(--ink4);}
+
+/* actions */
+.acts{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.snz-wrap{display:inline-flex;align-items:center;gap:4px;}
+.snz-days{font-family:var(--f);font-size:11px;padding:0 2px;background:var(--card);border:1px solid var(--border2);border-radius:4px;color:var(--ink3);cursor:pointer;height:24px;}
+.act{font-family:var(--f);font-size:11.5px;font-weight:600;border:1px solid transparent;background:transparent;color:var(--ink4);border-radius:5px;padding:0 8px;height:24px;cursor:pointer;white-space:nowrap;transition:all .12s;}
+.item:hover .act{border-color:var(--border2);background:var(--card);color:var(--ink3);}
+.act.delay{color:var(--amber);border:1.5px solid var(--amber-bd);}
+.item:hover .act.delay{border-color:var(--amber);color:var(--amber);}
+.snz-days{opacity:.75;}
+.item:hover .snz-days{opacity:1;}
+.act.delay:hover{background:var(--amber-bg);}
+.act.close:hover{border-color:var(--green);color:var(--green);background:var(--green-bg);}
+.act.mute:hover{border-color:var(--red);color:var(--red);background:var(--red-bg);}
+
+/* footer, key, modal */
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink4);margin-top:6px;flex-wrap:wrap;}
+.foot a{color:var(--gold);cursor:pointer;text-decoration:none;font-weight:600;}
+.keycard{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;max-width:440px;box-shadow:var(--sh);}
+.keycard p{font-size:13px;color:var(--ink3);margin:6px 0 12px;}
+.keycard input{width:100%;font-family:var(--f);font-size:14px;padding:8px 10px;border:1px solid var(--border2);border-radius:5px;background:#fff;margin-bottom:10px;}
+.err{font-size:12.5px;color:var(--red);margin:8px 0;}
+.ov{position:fixed;inset:0;background:rgba(15,12,8,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:10;}
+.ov.on{display:flex;}
+.modal{background:var(--card);border-radius:8px;max-width:620px;width:100%;max-height:80vh;overflow:auto;padding:20px 22px;box-shadow:0 6px 24px rgba(15,12,8,.2);}
+.modal h3{font-family:var(--fh);font-size:22px;margin-bottom:4px;}
+.modal pre{white-space:pre-wrap;font-family:var(--f);font-size:13.5px;line-height:1.6;color:var(--ink2);margin-top:10px;}
+
+@media(max-width:700px){
+  .pt{font-size:24px;}
+  .body{padding:10px 12px 10px 11px;}
+  .date{display:none;}
+  .l3{flex-direction:column;align-items:stretch;gap:8px;}
+  .acts{justify-content:flex-start;flex-wrap:wrap;}
+  .act,.snz-days{height:30px;font-size:12.5px;}
+  .act{border-color:var(--border2);background:var(--card);color:var(--ink3);}
+  .snz-days{opacity:1;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <div class="pt">Inbox</div>
+      <div class="ps">Open email items. Click one to open the thread in Gmail.</div>
+    </div>
+    <div class="meta"><span id="flash"></span><span id="scan"></span><div class="costbox" id="costbox" title="AI cost from the scanner. Official bill is in the Claude Console."><div><span>This month</span><b id="c-month">$0.00</b></div><div><span>On pace for</span><b id="c-pace">$0.00</b></div></div><button class="btn" id="refresh">Refresh</button></div>
+  </div>
+  <div id="banner"></div>
+  <div id="app"></div>
+  <div class="foot" id="foot" style="display:none">
+    <span id="hidden"></span>
+    <span><a id="muted-link">Muted senders</a> &middot; <a id="style-link">How Jack writes</a></span>
+  </div>
+</div>
+<div class="ov" id="ov-muted"><div class="modal"><h3>Muted senders</h3><div class="ps">Email from these senders stays off the list. Unmute to bring their new email back.</div><div id="muted-list" style="margin-top:10px"></div><div style="margin-top:14px;text-align:right"><button class="btn" id="close-muted">Close</button></div></div></div>
+<div class="ov" id="ov"><div class="modal"><h3>How Jack writes</h3><div class="ps">The sheet Claude drafts from. Every reply you send is compared with its draft; the sheet is rewritten each morning once there are 3 or more new edits, and your latest edits go straight into the next draft.</div><div id="learn-stats" class="ps" style="margin-top:10px;color:var(--ink2);font-weight:600"></div><pre id="guide"></pre><div style="margin-top:14px;text-align:right"><button class="btn" id="close">Close</button></div></div></div>
+
+<script>
+(function(){
+  var SB_URL = 'https://zrrxgrxpokgyxvmckqzh.supabase.co';
+  var SB_KEY = 'sb_publishable_MMzPWwUPFrOCeqFkgbZkVA_mPBntppz';
+  var KEY_NAME = 'kb_inbox_key';
+  var SNZ_KEY = 'kb_snooze_default'; // same default as the daily planner's delay
+  var SECTIONS = [
+    { id: 'owe', title: 'You owe a reply', empty: 'Nothing owed.' },
+    { id: 'waiting', title: 'Waiting on them', empty: 'Nobody is overdue.' },
+    { id: 'promised', title: 'You promised', empty: 'No open promises.' }
+  ];
+  var items = [];
+  var showDelayed = false;
+  var framed = window.self !== window.top;
+  if (framed) document.body.classList.add('framed');
+
+  function store(k, v){ try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch(e){ return ''; } }
+  function getKey(){ return store(KEY_NAME); }
+
+  function rpc(fn, args){
+    return fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args)
+    }).then(function(r){
+      if (r.status === 400 || r.status === 401 || r.status === 403) return r.text().then(function(t){ throw new Error(/bad inbox key/.test(t) ? 'badkey' : t); });
+      if (!r.ok) return r.text().then(function(t){ throw new Error(t || ('HTTP ' + r.status)); });
+      return r.status === 204 ? null : r.json();
+    });
+  }
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+  function t(s){ return s ? new Date(s).getTime() : 0; }
+  function ageText(ms){
+    var m = Math.max(0, Math.floor(ms / 60000));
+    if (m < 60) return m + 'm';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + 'h';
+    return Math.floor(h / 24) + 'd';
+  }
+  function dayLabel(d){ return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+  function dateLabel(iso){
+    if (!iso) return '';
+    var d = new Date(iso), today = new Date();
+    var time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (d.toDateString() === today.toDateString()) return 'Today ' + time;
+    var y = new Date(); y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'Yesterday ' + time;
+    return dayLabel(d);
+  }
+  function dueInfo(s){
+    if (!s) return null;
+    var p = s.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var today = new Date(); today.setHours(0,0,0,0);
+    return { label: dayLabel(d), over: d < today };
+  }
+  function isDelayed(it){ return it.status === 'snoozed' && t(it.snooze_until) > Date.now(); }
+  function notDueYet(it){ return t(it.show_at) > Date.now(); }
+
+  function itemHtml(it, s){
+    var onList = Date.now() - t(it.show_at || it.clock_at); // time on the list: drives color and order
+    var age = s.id === 'waiting' ? Date.now() - t(it.clock_at || it.show_at) : onList;
+    var due = s.id === 'promised' ? dueInfo(it.promised_due) : null;
+    var delayed = isDelayed(it);
+    var tone = delayed ? '' : (onList >= 2 * 864e5 || (due && due.over) ? 'red' : (onList >= 864e5 ? 'amber' : ''));
+    var verb = s.id === 'owe' ? '' : (s.id === 'waiting' ? 'Asked ' : 'Promised ');
+    var chips = '';
+    if (it.job) chips += '<span class="chip job">' + esc(it.job) + '</span>';
+    if (it.flag === 'verify') chips += '<span class="chip verify">Possible scam: verify by phone</span>';
+    if (it.flag === 'bt') chips += '<span class="chip bt">Reply in Buildertrend</span>';
+    if (s.id === 'owe' && it.needs_call && it.flag !== 'verify') chips += '<span class="chip call">Needs your call</span>';
+    else if (s.id === 'owe' && it.draft_id) chips += '<span class="chip draft">Draft ready</span>';
+    if (due) chips += '<span class="chip due' + (due.over ? ' over' : '') + '">Due ' + esc(due.label) + '</span>';
+    if (s.id === 'waiting' && it.replied_at) chips += '<span class="chip good">They replied ' + esc(dateLabel(it.replied_at)) + '</span>';
+    if (s.id === 'promised' && it.looks_done) chips += '<span class="chip good">Looks done</span>';
+    if (delayed) chips += '<span class="chip later">Back ' + esc(dayLabel(new Date(it.snooze_until))) + '</span>';
+    var ctx = it.context ? esc(it.context) : (it.subject ? '<span class="subj">' + esc(it.subject) + '</span>' : '');
+    var dflt = store(SNZ_KEY) || '3';
+    var opts = [['1','1d'],['2','2d'],['3','3d'],['5','5d'],['7','7d'],['14','14d'],['c','...']].map(function(o){
+      return '<option value="' + o[0] + '"' + (o[0] === dflt ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('');
+    var acts = delayed
+      ? '<button class="act" data-act="back">Bring back</button>'
+      : '<span class="snz-wrap"><select class="snz-days" title="Days to delay">' + opts + '</select>' +
+        '<button class="act delay" data-act="delay" title="Hide it for that many days, then it comes back">Delay</button></span>' +
+        '<button class="act close" data-act="close" title="Handled. Take it off the list">&#10003; Clear</button>' +
+        (it.from_email ? '<button class="act mute" data-act="mute" title="Close it and hide all future email from this sender">Mute</button>' : '');
+    return '<div class="item ' + tone + (delayed ? ' delayed' : '') + '" data-id="' + esc(it.id) + '" data-url="' + esc(it.gmail_url) + '" title="' + esc(it.subject ? 'Subject: ' + it.subject : '') + '">' +
+      '<span class="bar"></span><div class="body">' +
+        '<div class="l1"><span class="name">' + esc(it.contact || it.from_email || 'Unknown') + '</span>' + chips +
+          '<span class="when"><span class="date">' + verb + esc(dateLabel(it.clock_at || it.show_at)) + '</span><span class="age">' + ageText(age) + '</span></span></div>' +
+        '<div class="l2">' + esc(it.need) + '</div>' +
+        '<div class="l3"><div class="ctx">' + ctx + '</div><div class="acts">' + acts + '</div></div>' +
+      '</div></div>';
+  }
+
+  function render(){
+    if (!getKey()) return renderKey();
+    var open = items.filter(function(i){ return !notDueYet(i) && (!isDelayed(i) || showDelayed); });
+    var delayedCount = items.filter(isDelayed).length;
+    var notDue = items.filter(function(i){ return notDueYet(i) && !isDelayed(i); }).length;
+    var html = '';
+    SECTIONS.forEach(function(s){
+      var list = open.filter(function(i){ return i.section === s.id; })
+        .sort(function(a, b){ return t(a.show_at || a.clock_at) - t(b.show_at || b.clock_at); }); // oldest on top
+      var live = list.filter(function(i){ return !isDelayed(i); }).length;
+      html += '<div class="sec"><div class="sh"><h2>' + s.title + '</h2><span class="cnt">' + live + '</span></div>';
+      if (!list.length) html += '<div class="empty">' + s.empty + '</div>';
+      list.forEach(function(it){ html += itemHtml(it, s); });
+      html += '</div>';
+    });
+    document.getElementById('app').innerHTML = html;
+    var bits = [];
+    if (delayedCount) bits.push(delayedCount + ' delayed <a id="tgl">' + (showDelayed ? 'Hide' : 'Show') + '</a>');
+    if (notDue) bits.push(notDue + ' waiting, not 3 business days yet');
+    document.getElementById('hidden').innerHTML = bits.join(' &middot; ');
+    var tg = document.getElementById('tgl'); if (tg) tg.onclick = function(){ showDelayed = !showDelayed; render(); };
+    document.getElementById('foot').style.display = 'flex';
+    var owe = open.filter(function(i){ return i.section === 'owe' && !isDelayed(i); }).length;
+    if (framed) { try { window.parent.postMessage({ kbInboxCount: owe }, '*'); } catch(e){} }
+  }
+
+  function renderKey(msg){
+    document.getElementById('foot').style.display = 'none';
+    document.getElementById('app').innerHTML =
+      '<div class="keycard"><div style="font-weight:700">Enter your inbox key</div>' +
+      '<p>One time, on this device. It keeps your email list private: the list can only be read with this key.</p>' +
+      (msg ? '<div class="err">' + esc(msg) + '</div>' : '') +
+      '<input id="keyin" type="password" autocomplete="off" placeholder="Inbox key"><button class="btn" id="keysave">Save</button></div>';
+    document.getElementById('keysave').onclick = function(){
+      var v = document.getElementById('keyin').value.trim();
+      if (!v) return;
+      store(KEY_NAME, v); load();
+    };
+  }
+
+  function load(){
+    if (!getKey()) return renderKey();
+    rpc('inbox_list', { p_key: getKey() }).then(function(rows){ items = rows || []; render(); })
+    .catch(function(e){
+      if (e.message === 'badkey') { store(KEY_NAME, ''); return renderKey('That key did not work. Check it and try again.'); }
+      document.getElementById('app').innerHTML = '<div class="err">Could not load the list: ' + esc(e.message).slice(0, 200) + '</div>';
+    });
+    loadCost();
+    rpc('inbox_health', { p_key: getKey() }).then(function(rows){
+      var h = (rows && rows[0]) || {};
+      var b = document.getElementById('banner'), now = Date.now();
+      var tm = function(x){ return new Date(x).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }); };
+      document.getElementById('scan').textContent = h.last_run ? 'Last scan ' + new Date(h.last_run).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'Waiting for first scan';
+      if (h.last_run && now - t(h.last_run) > 30 * 60000) {
+        b.innerHTML = '<div class="banner red">The scanner hasn\'t run since ' + esc(tm(h.last_run)) + '. This list may be missing new email. Check the script in Google Apps Script.</div>';
+      } else if (h.error_at && now - t(h.error_at) < 2 * 3600000 && t(h.error_at) >= t(h.last_ok)) {
+        b.innerHTML = '<div class="banner amber">The scanner hit a problem at ' + esc(tm(h.error_at)) + ': ' + esc(h.last_error || '') + '. Some email may not be sorted until it\'s fixed.</div>';
+      } else b.innerHTML = '';
+    }).catch(function(){});
+  }
+
+  function money(n){ n = Number(n || 0); return '$' + (n < 100 ? n.toFixed(2) : n.toFixed(0)); }
+  function loadCost(){
+    rpc('inbox_costs', { p_key: getKey() }).then(function(c){
+      c = c || {};
+      document.getElementById('c-month').textContent = money(c.month);
+      document.getElementById('c-pace').textContent = money(c.projected);
+      if (c.drafts_paused) {
+        var b = document.getElementById('banner');
+        if (!b.innerHTML) b.innerHTML = '<div class="banner amber">Drafts are paused: this month\'s AI cost passed your ' + money(c.budget) + ' budget. The list still updates.</div>';
+      }
+    }).catch(function(){});
+  }
+
+  function flash(msg){
+    var f = document.getElementById('flash'); f.textContent = msg;
+    clearTimeout(flash._t); flash._t = setTimeout(function(){ f.textContent = ''; }, 3500);
+  }
+
+  function save(id, status, until){
+    var it = items.filter(function(i){ return i.id === id; })[0];
+    if (it) { it.status = status; it.snooze_until = until; }
+    if (status === 'done' || status === 'muted') items = items.filter(function(i){ return i.id !== id; });
+    render();
+    rpc('inbox_set', { p_key: getKey(), p_id: id, p_status: status, p_snooze_until: until }).catch(function(){
+      flash('Save failed. Refresh and try again.');
+    });
+  }
+
+  function delay(id, row){
+    var sel = row.querySelector('.snz-days');
+    var v = sel ? sel.value : (store(SNZ_KEY) || '3');
+    if (v === 'c') { var inp = prompt('Delay how many days?', '3'); if (inp === null) return; v = inp; }
+    var days = parseInt(v, 10);
+    if (!days || days < 1) return;
+    store(SNZ_KEY, String(days));
+    var back = new Date(); back.setDate(back.getDate() + days); back.setHours(7, 0, 0, 0); // back at 7am that day
+    save(id, 'snoozed', back.toISOString());
+    flash('Delayed to ' + dayLabel(back));
+  }
+
+  document.getElementById('app').addEventListener('click', function(ev){
+    var row = ev.target.closest('.item'); if (!row) return;
+    if (ev.target.closest('.snz-days')) { ev.stopPropagation(); return; }
+    var btn = ev.target.closest('.act');
+    var id = row.getAttribute('data-id');
+    if (btn) {
+      ev.stopPropagation();
+      var a = btn.getAttribute('data-act');
+      var it = items.filter(function(i){ return i.id === id; })[0] || {};
+      if (a === 'delay') return delay(id, row);
+      if (a === 'close') { save(id, 'done', null); return flash('Cleared'); }
+      if (a === 'back') { save(id, 'open', null); return flash('Back on the list'); }
+      if (a === 'mute') {
+        var who = it.contact || it.from_email || 'this sender';
+        if (!confirm('Mute ' + who + '?\n\nThis closes the item and hides all future email from ' + (it.from_email || 'this sender') + ' on this list.')) return;
+        save(id, 'muted', null); return flash('Muted ' + who);
+      }
+      return;
+    }
+    var url = row.getAttribute('data-url');
+    if (url) window.open(url, 'kbgmail');
+  });
+
+  document.getElementById('refresh').onclick = load;
+  document.getElementById('style-link').onclick = function(){
+    document.getElementById('guide').textContent = 'Loading...';
+    document.getElementById('ov').classList.add('on');
+    document.getElementById('learn-stats').textContent = '';
+    rpc('inbox_learning', { p_key: getKey() }).then(function(L){
+      L = L || {};
+      document.getElementById('guide').textContent = L.guide || 'No sheet yet. It is written the first time the scanner runs.';
+      var bits = [];
+      if (L.versions) bits.push('Version ' + L.versions + (L.updated_at ? ', updated ' + dayLabel(new Date(L.updated_at)) : ''));
+      bits.push('Learned from ' + (L.sent_total || 0) + ' of your sent replies');
+      if (L.kept_7d != null) bits.push('This week you kept ' + L.kept_7d + '% of the draft' + (L.kept_prev_7d != null ? ' (last week ' + L.kept_prev_7d + '%)' : ''));
+      document.getElementById('learn-stats').textContent = bits.join(' \u00b7 ');
+    }).catch(function(){ document.getElementById('guide').textContent = 'Could not load the sheet.'; });
+  };
+  document.getElementById('close').onclick = function(){ document.getElementById('ov').classList.remove('on'); };
+  function loadMuted(){
+    var el = document.getElementById('muted-list'); el.textContent = 'Loading...';
+    rpc('inbox_muted', { p_key: getKey() }).then(function(rows){
+      if (!rows || !rows.length) { el.innerHTML = '<div class="empty" style="padding:6px 0">Nobody is muted.</div>'; return; }
+      el.innerHTML = rows.map(function(r){
+        return '<div class="mrow"><span><b>' + esc(r.contact || r.from_email) + '</b> <span style="color:var(--ink4)">' + esc(r.from_email) + '</span></span>' +
+          '<button class="btn" data-email="' + esc(r.from_email) + '">Unmute</button></div>';
+      }).join('');
+    }).catch(function(){ el.textContent = 'Could not load the muted list.'; });
+  }
+  document.getElementById('muted-link').onclick = function(){ document.getElementById('ov-muted').classList.add('on'); loadMuted(); };
+  document.getElementById('close-muted').onclick = function(){ document.getElementById('ov-muted').classList.remove('on'); };
+  document.getElementById('muted-list').addEventListener('click', function(ev){
+    var b = ev.target.closest('button[data-email]'); if (!b) return;
+    b.disabled = true; b.textContent = 'Unmuting...';
+    rpc('inbox_unmute', { p_key: getKey(), p_email: b.getAttribute('data-email') }).then(function(){ loadMuted(); flash('Unmuted'); })
+      .catch(function(){ b.disabled = false; b.textContent = 'Unmute'; flash('Unmute failed'); });
+  });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && getKey()) load(); });
+  setInterval(function(){ if (getKey()) load(); }, 2 * 60 * 1000);
+  setInterval(function(){ if (getKey() && items.length) render(); }, 60 * 1000); // keep ages, colors and delays current
+  load();
+})();
+</script>
+</body>
+</html>
